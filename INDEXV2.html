@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>URJConnect — Foros</title>
+  <meta name="description" content="URJConnect • Foros de asignaturas con registro/login, favoritos y perfil. Single-file, super moderno." />
+  <link href="css/styles.css" rel="stylesheet" />
+
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"></div>
+  <main>
+    <!-- ============ AUTH (solo formulario centrado + URJConnect) ============ -->
+    <section id="auth" aria-label="Acceso">
+      <div class="auth-shell">
+        <div class="auth-brand" aria-label="Marca">
+          <div class="logo" aria-hidden="true"></div>
+          <h1 class="wordmark">urjconnect</h1>
+        </div>
+
+        <section class="auth-card glass" aria-live="polite">
+          <div class="switch" role="tablist" aria-label="Cambiar entre iniciar sesión y crear cuenta">
+            <div class="pill" id="switchPill"></div>
+            <button class="active" id="btnLoginTab" role="tab" aria-selected="true" aria-controls="loginPanel">Iniciar sesión</button>
+            <button id="btnRegisterTab" role="tab" aria-selected="false" aria-controls="registerPanel">Crear cuenta</button>
+          </div>
+
+          <div class="forms" id="formsWrap">
+            <!-- LOGIN -->
+            <form id="loginForm" class="active" aria-labelledby="btnLoginTab">
+              <div class="field">
+                <label for="li_email">Email</label>
+                <input id="li_email" name="email" type="email" autocomplete="username" placeholder="tucorreo@ejemplo.com" required />
+              </div>
+              <div class="field">
+                <label for="li_pass">Contraseña</label>
+                <input id="li_pass" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required />
+                <small>Demo sólo frontend. No uses contraseñas reales.</small>
+              </div>
+              <div class="actions">
+                <button class="btn" type="submit">Entrar</button>
+              </div>
+              <div class="error" id="loginError" role="alert" aria-live="assertive"></div>
+            </form>
+
+            <!-- REGISTER -->
+            <form id="registerForm" aria-labelledby="btnRegisterTab">
+              <div class="row">
+                <div class="field">
+                  <label for="r_name">Nombre</label>
+                  <input id="r_name" name="name" type="text" placeholder="Tu nombre" required />
+                </div>
+                <div class="field">
+                  <label for="r_email">Email</label>
+                  <input id="r_email" name="email" type="email" placeholder="tucorreo@ejemplo.com" required />
+                </div>
+              </div>
+              <div class="row">
+                <div class="field">
+                  <label for="r_pass">Contraseña</label>
+                  <input id="r_pass" name="password" type="password" placeholder="Mín. 6 caracteres" minlength="6" required />
+                </div>
+                <div class="field">
+                  <label for="r_pass2">Repetir contraseña</label>
+                  <input id="r_pass2" name="password2" type="password" placeholder="Repite la contraseña" minlength="6" required />
+                </div>
+              </div>
+              <div class="field">
+                <label for="r_bio">Bio (opcional)</label>
+                <textarea id="r_bio" name="bio" rows="2" placeholder="Cuéntanos algo breve sobre ti..."></textarea>
+              </div>
+              <div class="actions">
+                <button class="btn" type="submit">Crear cuenta</button>
+              </div>
+              <div class="error" id="registerError" role="alert" aria-live="assertive"></div>
+            </form>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ============ APP ============ -->
+    <section id="app">
+      <header class="app-header glass">
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <div class="brand-wordmark" aria-label="URJConnect">URJConnect</div>
+        </div>
+
+        <div class="search">
+          <div class="field" style="display:flex; align-items:center; gap:8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <input id="searchInput" type="search" placeholder="Buscar asignaturas..." />
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <div class="fav-panel">
+            <button class="icon-btn" id="btnFavs" aria-expanded="false" aria-controls="favDropdown">⭐ Favoritos</button>
+            <div class="fav-dropdown dropdown" id="favDropdown" role="menu" aria-label="Seleccionar foros favoritos">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px;">
+                <strong>Elige tus foros</strong>
+                <button class="close" id="closeFavs" aria-label="Cerrar">Cerrar</button>
+              </div>
+              <div class="fav-list" id="favList"></div>
+            </div>
+          </div>
+
+          <button class="icon-btn" id="themeToggle" title="Cambiar tema">🌓 Tema</button>
+          <div class="divider"></div>
+
+          <div class="profile">
+            <button class="profile-btn" id="profileButton" aria-expanded="false" aria-controls="profileMenu">
+              <div class="avatar" id="avatar">
+                <span id="avatarInitials">AH</span>
+              </div>
+              <span id="profileName">Tu Nombre</span>
+            </button>
+            <div class="profile-menu dropdown" id="profileMenu">
+              <button class="icon-btn" id="btnEditProfile">✏️ Editar perfil</button>
+              <button class="icon-btn" id="btnLogout">🚪 Cerrar sesión</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="chips" id="chipsRow" aria-label="Favoritos anclados"></div>
+
+      <section class="grid container" id="cardsGrid" aria-live="polite"></section>
+    </section>
+  </main>
+
+  <!-- ============ MODALS ============ -->
+  <div class="modal" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+    <div class="content glass">
+      <div class="head">
+        <h3 id="profileTitle">Editar perfil</h3>
+        <button class="close" data-close="#profileModal">Cerrar</button>
+      </div>
+      <div class="body">
+        <div class="row">
+          <div class="field">
+            <label for="p_name">Nombre</label>
+            <input id="p_name" type="text" />
+          </div>
+          <div class="field">
+            <label>Color del avatar</label>
+            <div class="swatches" id="p_swatches"></div>
+            <div class="color-row">
+              <input id="p_color" type="color" value="#6366f1" aria-label="Color personalizado" />
+              <small class="hint">O elige un color personalizado</small>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label for="p_bio">Bio</label>
+          <textarea id="p_bio" rows="3"></textarea>
+        </div>
+        <div class="actions">
+          <button class="btn" id="saveProfile">Guardar cambios</button>
+          <button class="btn secondary" data-close="#profileModal">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="forumModal" role="dialog" aria-modal="true" aria-labelledby="forumTitle">
+    <div class="content glass">
+      <div class="head">
+        <h3 id="forumTitle">Foro</h3>
+        <button class="close" data-close="#forumModal">Cerrar</button>
+      </div>
+      <div class="body">
+        <div class="posts" id="posts"></div>
+        <div class="row">
+          <div class="field">
+            <label for="newPost">Nuevo mensaje</label>
+            <textarea id="newPost" rows="3" placeholder="Comparte una duda, recurso o idea..."></textarea>
+          </div>
+          <div style="display:flex; align-items:flex-end;">
+            <button class="btn" id="sendPost">Publicar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- ============ TEMPLATE CARD ============ -->
+  <template id="cardTemplate">
+    <article class="card" tabindex="0">
+      <div class="spark" aria-hidden="true"></div>
+      <div class="card-head">
+        <div class="subject">
+          <div class="ico" data-bg></div>
+          <div class="title" data-title style="font-size:16px;"></div>
+        </div>
+        <button class="fav-toggle" title="Marcar como favorito" data-fav>☆</button>
+      </div>
+      <p data-desc></p>
+      <div class="cta">
+        <button class="link" data-details>Detalles</button>
+        <button class="enter" data-enter>Entrar al foro</button>
+      </div>
+    </article>
+  </template>
+  <script src="js/scripts.js"></script>
+</body>
+</html>
