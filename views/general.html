@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="public/css/styles.css" rel="stylesheet" />
+</head>
+<body>
+        <section id="app">  
+      <header class="app-header glass">
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <div class="brand-wordmark" aria-label="URJConnect">URJConnect</div>
+        </div>
+
+        <div class="search">
+          <div class="field" style="display:flex; align-items:center; gap:8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <input id="searchInput" type="search" placeholder="Buscar asignaturas..." />
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <div class="fav-panel">
+            <button class="icon-btn" id="btnFavs" aria-expanded="false" aria-controls="favDropdown">⭐ Favoritos</button>
+            <div class="fav-dropdown dropdown" id="favDropdown" role="menu" aria-label="Seleccionar foros favoritos">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px;">
+                <strong>Elige tus foros</strong>
+                <button class="close" id="closeFavs" aria-label="Cerrar">Cerrar</button>
+              </div>
+              <div class="fav-list" id="favList"></div>
+            </div>
+          </div>
+
+          <button class="icon-btn" id="themeToggle" title="Cambiar tema">🌓 Tema</button>
+          <div class="divider"></div>
+
+          <div class="profile">
+            <button class="profile-btn" id="profileButton" aria-expanded="false" aria-controls="profileMenu">
+              <div class="avatar" id="avatar">
+                <span id="avatarInitials">AH</span>
+              </div>
+              <span id="profileName">Tu Nombre</span>
+            </button>
+            <div class="profile-menu dropdown" id="profileMenu">
+              <button class="icon-btn" id="btnEditProfile">✏️ Editar perfil</button>
+              <button class="icon-btn" id="btnLogout">🚪 Cerrar sesión</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="chips" id="chipsRow" aria-label="Favoritos anclados"></div>
+
+      <section class="grid container" id="cardsGrid" aria-live="polite"></section>
+    </section>
+    <script src="/src/app.js"></script>
+</body>
+</html>
