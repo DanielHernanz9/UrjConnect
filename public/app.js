@@ -6,7 +6,7 @@
 // This file is intentionally blank
 // Use this file to add JavaScript to your project
 
-  ;(() => {
+ 
     /** =========================
      *  Datos base
      *  ========================= */
@@ -512,4 +512,3 @@
 
     if(store.getSession()){ app.init(); authUI.showApp(); }
     else { authUI.showAuth(); }
-  })()
