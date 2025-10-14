@@ -96,16 +96,7 @@
         </div>
 
         <div class="toolbar">
-          <div class="fav-panel">
-            <button class="icon-btn" id="btnFavs" aria-expanded="false" aria-controls="favDropdown">⭐ Favoritos</button>
-            <div class="fav-dropdown dropdown" id="favDropdown" role="menu" aria-label="Seleccionar foros favoritos">
-              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px;">
-                <strong>Elige tus foros</strong>
-                <button class="close" id="closeFavs" aria-label="Cerrar">Cerrar</button>
-              </div>
-              <div class="fav-list" id="favList"></div>
-            </div>
-          </div>
+          <!-- Navbar favorites removed (we use per-card stars and a filter button above the forums) -->
 
           <button class="icon-btn" id="themeToggle" title="Cambiar tema">🌓 Tema</button>
           <div class="divider"></div>
@@ -124,6 +115,13 @@
           </div>
         </div>
       </header>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; max-width:1200px; " class="chips">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="icon-btn" id="filterFavsBtn" aria-pressed="false">⭐ Favoritos</button>
+        </div>
+        <div style="flex:1"></div>
+      </div>
 
       <div class="chips" id="chipsRow" aria-label="Favoritos anclados"></div>
 

@@ -167,10 +167,7 @@
         profileName: $('#profileName'),
         btnEditProfile: $('#btnEditProfile'),
         btnLogout: $('#btnLogout'),
-        btnFavs: $('#btnFavs'),
-        favDropdown: $('#favDropdown'),
-        favList: $('#favList'),
-        closeFavs: $('#closeFavs'),
+        filterFavsBtn: $('#filterFavsBtn'),
         chipsRow: $('#chipsRow'),
         cardsGrid: $('#cardsGrid'),
         themeToggle: $('#themeToggle'),
@@ -189,6 +186,7 @@
         sendPost: $('#sendPost'),
       },
       user: null,
+  onlyFavs: false,
       get sessionEmail(){ const s = store.getSession(); return s?.email || null; },
       get users(){ return store.getUsers(); },
 
@@ -234,31 +232,15 @@
       },
 
       renderFavDropdown(){
-        const { favList } = this.el;
-        favList.innerHTML = '';
-        SUBJECTS.forEach(s => {
-          const row = document.createElement('label');
-          row.className = 'fav-item';
-          row.innerHTML = `
-            <input type="checkbox" ${this.isFav(s.id) ? 'checked':''} data-check="${s.id}" />
-            <span style="width:24px;height:24px;border-radius:7px;display:inline-block;background:${s.color}; box-shadow: inset 0 0 12px rgba(255,255,255,.4)"></span>
-            <strong style="flex:1">${s.name}</strong>
-          `;
-          favList.appendChild(row);
-        });
+        // kept for compatibility but the UI no longer has a dropdown; this builds a simple list if needed elsewhere
+        return SUBJECTS.map(s => ({ id: s.id, name: s.name, checked: this.isFav(s.id) }));
       },
 
       renderChips(){
         const { chipsRow } = this.el;
         chipsRow.innerHTML = '';
         const favs = this.user.favorites || [];
-        if(favs.length === 0){
-          const hint = document.createElement('div');
-          hint.className = 'chip';
-          hint.textContent = '⭐ Añade favoritos desde el botón "Favoritos"';
-          chipsRow.appendChild(hint);
-          return;
-        }
+       
         favs.forEach(id => {
           const subj = SUBJECTS.find(s=>s.id===id);
           if(!subj) return;
@@ -269,11 +251,6 @@
           chipsRow.appendChild(chip);
         });
 
-        const all = document.createElement('button');
-        all.className = 'chip';
-        all.textContent = 'Ver todos';
-        all.addEventListener('click', () => this.renderCards());
-        chipsRow.appendChild(all);
       },
 
       /* ---------- Cards ---------- */
@@ -283,6 +260,8 @@
         const q = (this.el.search?.value || '').toLowerCase().trim();
 
         let list = SUBJECTS.filter(s => (!filterById || s.id === filterById));
+        // If the app is in 'only favorites' mode, filter accordingly
+        if(this.onlyFavs){ list = list.filter(s => this.isFav(s.id)); }
         if(q){
           list = list.filter(s => s.name.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q));
         }
@@ -310,12 +289,14 @@
           const icon = $('[data-bg]', node);
           icon.style.background = s.color;
 
-          // ⭐ Botones deshabilitados por ahora
+          // ⭐ Botón activo: toggle favorito por card
           const favBtn = $('[data-fav]', node);
-          favBtn.textContent = this.isFav(s.id) ? '★' : '☆';
-          favBtn.setAttribute('aria-label', 'Favoritos no disponibles por ahora');
-          favBtn.setAttribute('disabled', 'true');
-          favBtn.setAttribute('aria-disabled', 'true');
+          const updateFavVisual = () => { favBtn.textContent = this.isFav(s.id) ? '★' : '☆'; favBtn.classList.toggle('active', this.isFav(s.id)); };
+          updateFavVisual();
+          favBtn.removeAttribute('disabled');
+          favBtn.removeAttribute('aria-disabled');
+          favBtn.setAttribute('aria-label', this.isFav(s.id) ? 'Quitar de favoritos' : 'Marcar como favorito');
+          favBtn.addEventListener('click', (e) => { e.stopPropagation(); this.toggleFav(s.id); updateFavVisual(); });
 
           const detailsBtn = $('[data-details]', node);
           const enterBtn = $('[data-enter]', node);
@@ -348,7 +329,6 @@
         });
         document.addEventListener('click', (e) => {
           if(!e.target.closest('.profile')) this.el.profileMenu.style.display = 'none';
-          if(!e.target.closest('.fav-panel')) this.el.favDropdown.style.display = 'none';
         });
 
         // Edit profile
@@ -384,17 +364,12 @@
           setTimeout(()=>location.reload(), 400);
         });
 
-        // Favorites dropdown
-        this.el.btnFavs.addEventListener('click', () => {
-          const open = this.el.favDropdown.style.display === 'block';
-          this.el.favDropdown.style.display = open ? 'none' : 'block';
-          this.el.btnFavs.setAttribute('aria-expanded', String(!open));
-        });
-        this.el.closeFavs.addEventListener('click', () => { this.el.favDropdown.style.display = 'none'; });
-
-        this.el.favList.addEventListener('change', (e) => {
-          const id = e.target?.getAttribute?.('data-check');
-          if(id) this.toggleFav(id);
+        // Filter favorites button (above the grid)
+        this.el.filterFavsBtn?.addEventListener('click', () => {
+          this.onlyFavs = !this.onlyFavs;
+          this.el.filterFavsBtn.setAttribute('aria-pressed', String(this.onlyFavs));
+          this.el.filterFavsBtn.classList.toggle('pressed', this.onlyFavs);
+          this.renderCards();
         });
 
         // Theme
