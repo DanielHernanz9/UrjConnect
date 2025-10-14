@@ -11,14 +11,14 @@
      *  Datos base
      *  ========================= */
     const SUBJECTS = [
-      { id: "matematicas", name: "Matemáticas", color: "linear-gradient(135deg,#6366f1,#06b6d4)", desc: "Álgebra, cálculo, estadísticas y más." },
-      { id: "lengua", name: "Lengua", color: "linear-gradient(135deg,#f43f5e,#f59e0b)", desc: "Gramática, comentario de texto y literatura." },
-      { id: "historia", name: "Historia", color: "linear-gradient(135deg,#0ea5e9,#22c55e)", desc: "Desde la Antigüedad hasta la actualidad." },
-      { id: "biologia", name: "Biología", color: "linear-gradient(135deg,#22c55e,#14b8a6)", desc: "Genética, ecología y biotecnología." },
-      { id: "fisica", name: "Física", color: "linear-gradient(135deg,#06b6d4,#8b5cf6)", desc: "Mecánica, ondas, electricidad y magnetismo." },
-      { id: "quimica", name: "Química", color: "linear-gradient(135deg,#f59e0b,#ec4899)", desc: "Reacciones, orgánica y química de materiales." },
-      { id: "ingles", name: "Inglés", color: "linear-gradient(135deg,#8b5cf6,#22c55e)", desc: "Speaking, writing, grammar & vocabulary." },
-      { id: "informatica", name: "Informática", color: "linear-gradient(135deg,#ec4899,#6366f1)", desc: "Programación, redes y desarrollo web." },
+      { id: "matematicas", name: "Matemáticas", color: "linear-gradient(135deg,#6366f1,#06b6d4)", desc: "Álgebra, cálculo, estadísticas y más.", icon: null },
+      { id: "lengua", name: "Lengua", color: "linear-gradient(135deg,#f43f5e,#f59e0b)", desc: "Gramática, comentario de texto y literatura.", icon: "/assets/favicon.ico" },
+      { id: "historia", name: "Historia", color: "linear-gradient(135deg,#0ea5e9,#22c55e)", desc: "Desde la Antigüedad hasta la actualidad.", icon: null },
+      { id: "biologia", name: "Biología", color: "linear-gradient(135deg,#22c55e,#14b8a6)", desc: "Genética, ecología y biotecnología.", icon: null },
+      { id: "fisica", name: "Física", color: "linear-gradient(135deg,#06b6d4,#8b5cf6)", desc: "Mecánica, ondas, electricidad y magnetismo.", icon: null },
+      { id: "quimica", name: "Química", color: "linear-gradient(135deg,#f59e0b,#ec4899)", desc: "Reacciones, orgánica y química de materiales.", icon: null },
+      { id: "ingles", name: "Inglés", color: "linear-gradient(135deg,#8b5cf6,#22c55e)", desc: "Speaking, writing, grammar & vocabulary.", icon: null },
+      { id: "informatica", name: "Informática", color: "linear-gradient(135deg,#ec4899,#6366f1)", desc: "Programación, redes y desarrollo web.", icon: null },
     ];
 
     /** =========================
@@ -288,6 +288,11 @@
           $('[data-desc]', node).textContent = s.desc;
           const icon = $('[data-bg]', node);
           icon.style.background = s.color;
+          
+          // Si la asignatura tiene un icono definido, lo mostramos
+          if (s.icon) {
+        icon.innerHTML = `<img src="${s.icon}" alt="Icono ${s.name}" style="width:22px; height:22px; object-fit:contain;"/>`;
+          }
 
           // ⭐ Botón activo: toggle favorito por card
           const favBtn = $('[data-fav]', node);

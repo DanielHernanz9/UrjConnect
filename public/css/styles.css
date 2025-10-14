@@ -227,10 +227,10 @@
       box-shadow: inset 0 0 18px rgba(255,255,255,0.35), 0 10px 24px rgba(0,0,0,0.25);
     }
 
-    /* Botones de card desactivados por ahora */
-    .fav-toggle, .card .cta .link, .card .cta .enter { opacity: 0.65; cursor: not-allowed; }
+    /* Botones de card */
+    .card .cta .link, .card .cta .enter { opacity: 0.65; cursor: not-allowed; }
     .card button[disabled]:hover { transform: none !important; }
-    .fav-toggle[disabled] { filter: grayscale(30%); }
+    .fav-toggle { cursor: pointer; }
 
     .fav-toggle { border: 0; background: transparent; font-size: 20px; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3)); }
     .card p { color: var(--muted); margin: 10px 0 14px; min-height: 44px; }
