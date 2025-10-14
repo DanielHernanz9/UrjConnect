@@ -223,9 +223,19 @@
     .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .subject { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: .2px; }
     .subject .ico {
-      width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: white; font-weight: 900;
-      box-shadow: inset 0 0 18px rgba(255,255,255,0.35), 0 10px 24px rgba(0,0,0,0.25);
+  width: 48px; height: 48px; border-radius: 10px; display: grid; place-items: center; color: white; font-weight: 900;
+  box-shadow: inset 0 0 18px rgba(255,255,255,0.35), 0 10px 24px rgba(0,0,0,0.25);
     }
+    .subject .ico img {
+    width: 80%;
+    height: 80%;
+    object-fit: contain;
+    border-radius: 10px;
+    display: block;
+    margin: auto;
+    background: transparent;
+}
+    
 
     /* Botones de card */
     .card .cta .link, .card .cta .enter { opacity: 0.65; cursor: not-allowed; }
