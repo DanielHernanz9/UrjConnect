@@ -232,7 +232,8 @@
     .card button[disabled]:hover { transform: none !important; }
     .fav-toggle { cursor: pointer; }
 
-    .fav-toggle { border: 0; background: transparent; font-size: 20px; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3)); }
+    .fav-toggle { border: 0; background: transparent; font-size: 20px; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3)); color: #ccc; transition: color 0.2s; }
+    .fav-toggle.active { color: #FFD600; }
     .card p { color: var(--muted); margin: 10px 0 14px; min-height: 44px; }
     .card .cta { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .link { border: 0; background: var(--chip); color: var(--text); border: 1px solid var(--chip-border); padding: 10px 12px; border-radius: 12px; font-weight: 700; }
