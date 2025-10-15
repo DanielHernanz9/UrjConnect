@@ -11,6 +11,7 @@ app.set('view engine', 'html');
 app.engine('html', mustacheExpress(), ".html");
 
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
 
 app.use(express.static(__dirname + '/../public'));
 

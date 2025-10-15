@@ -4,12 +4,13 @@ import { randomBytes } from 'crypto';
 const sessions = {};
 
 export function login(email, password) {
-    const user = User.login();
+    const user = User.login(email, password);
     if (typeof user === "number") {
         return user;
     }
-    token = generateRandomToken();
+    const token = generateRandomToken();
     sessions[token] = user;
+    console.log(sessions)
     return token;
 }
 
@@ -18,7 +19,7 @@ export function register(email, password, name, bio) {
     if (typeof user === "number") {
         return user;
     }
-    token = generateRandomToken()
+    const token = generateRandomToken()
     sessions[token] = user;
     return token;
 }

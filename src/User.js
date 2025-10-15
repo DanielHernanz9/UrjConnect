@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt';
 import fs from 'fs';
 
-const USERS_DIR = "../data/users/"
+const USERS_DIR = "data/users/"
 
 export default class User {
     constructor(email, password, name, bio) {
@@ -70,7 +70,7 @@ export default class User {
         fs.writeFileSync(USERS_DIR + this.email, JSON.stringify(this));
     }
 
-    static getFromFile (email) {
+    static getFromFile(email) {
         if (!fs.existsSync(USERS_DIR + email)) {
             return 1
         }
