@@ -3,6 +3,7 @@ import mustacheExpress from 'mustache-express';
 import bodyParser from 'body-parser';
 import { __dirname } from './dirname.js';
 import routerapp from './router.js';
+import cookieParser from 'cookie-parser';
 
 const app = express();
 
@@ -12,6 +13,7 @@ app.engine('html', mustacheExpress(), ".html");
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(cookieParser());
 
 app.use(express.static(__dirname + '/../public'));
 

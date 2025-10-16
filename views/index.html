@@ -208,6 +208,12 @@
       </div>
     </article>
   </template>
+  {{#jsonUser}}
+  <script>
+    const user = {{{jsonUser}}}
+    sessionStorage.setItem('session', JSON.stringify(user));
+  </script>
+  {{/jsonUser}}
   <script src="/app.js"></script>
 </body>
 </html>

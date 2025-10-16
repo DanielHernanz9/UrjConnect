@@ -31,3 +31,7 @@ export function authenticate(token) {
 function generateRandomToken() {
     return randomBytes(16).toString('hex');
 }
+
+export function logout(token) {
+    delete sessions[token];
+}
