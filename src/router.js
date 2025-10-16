@@ -73,9 +73,13 @@ router.post("/register", (req, res) => {
 router.post("/updateUser", (req, res) => {
     if ((req.cookies && req.cookies.session_id)) {
         const user = auth.authenticate(req.cookies.session_id)
-        if (user && req.body.name && req.body.bio) {
-            user.setName(req.body.name)
-            user.setBio(req.body.bio)
+        if (user) {
+            if (req.body.name) {
+                user.setName(req.body.name)
+            }
+            if ('bio' in req.body) {
+                user.setBio(req.body.bio)
+            }
             res.json({code: 0});
             return;
         }
