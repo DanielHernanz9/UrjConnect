@@ -10,7 +10,6 @@ export function login(email, password) {
     }
     const token = generateRandomToken();
     sessions[token] = user;
-    console.log(sessions)
     return token;
 }
 
