@@ -40,7 +40,7 @@ export default class User {
 
     static register(email, password, name, bio) {
         if (fs.existsSync(USERS_DIR + email)) {
-            return 3;
+            return 11;
         }
         const o = new User(email);
         o.setName(name);
@@ -52,10 +52,7 @@ export default class User {
 
     static login(email, password) {
         const o = User.getFromFile(email);
-        if (o === 1) {
-            return 1
-        }
-        if (o.isPassword(password)) {
+        if (typeof o === "number" || o.isPassword(password)) {
             return o;
         } else {
             return 2;

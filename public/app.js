@@ -33,6 +33,14 @@
     // 🎨 Presets de color para el avatar
     const PRESET_COLORS = ['#6366f1','#06b6d4','#22c55e','#f59e0b','#ec4899','#8b5cf6','#0ea5e9','#14b8a6'];
 
+    // Mensajes de error
+    const ERROR_MESSAGES = {
+      1: "No existe ninguna cuenta con ese email.",
+      2: "Contraseña incorrecta.",
+      11: "Ya existe una cuenta con ese email.",
+      21: "Sesión caducada"
+    }
+
     // HSL (antiguo) -> HEX (para compatibilidad)
     function hslToHex(h, s, l){
       s/=100; l/=100;
@@ -57,13 +65,15 @@
     }
 
     const store = {
-      getUsers(){ return JSON.parse(localStorage.getItem('users')||'{}'); },
-      setUsers(obj){ localStorage.setItem('users', JSON.stringify(obj)); },
-      getSession(){ return JSON.parse(localStorage.getItem('session')||'null'); },
-      setSession(email){ localStorage.setItem('session', JSON.stringify({email})); },
-      clearSession(){ localStorage.removeItem('session'); },
-      getPosts(email, subject){ return JSON.parse(localStorage.getItem(`posts:${email}:${subject}`) || '[]'); },
-      setPosts(email, subject, posts){ localStorage.setItem(`posts:${email}:${subject}`, JSON.stringify(posts)); },
+      getSession(){ return JSON.parse(sessionStorage.getItem('session')||'null'); },
+      setSession(user){ sessionStorage.setItem('session', JSON.stringify(user)); },
+      clearSession(){ sessionStorage.removeItem('session'); },
+      setTheme(theme){ localStorage.setItem('theme', theme); },
+      getTheme(){ return localStorage.getItem('theme')||'dark'; },
+      getFavourites(){ return JSON.parse(localStorage.getItem('favourites')||'[]'); },
+      setFavourites(favourites) { localStorage.setItem('favourites', JSON.stringify(favourites)); },
+      setColor(color) {localStorage.setItem('color', color); },
+      getColor() {return localStorage.getItem('color') || hslToHex(210,85,60); }
     };
 
     /** =========================
@@ -114,23 +124,43 @@
     });
 
     // LOGIN
-    authUI.loginForm.addEventListener('submit', (e) => {
+    authUI.loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       authUI.loginError.textContent = '';
       const email = $('#li_email').value.trim().toLowerCase();
       const pass = $('#li_pass').value;
-      const users = store.getUsers();
-      const user = users[email];
-      if(!user){ authUI.loginError.textContent = 'No existe ninguna cuenta con ese email.'; return; }
-      if(user.pass !== hash(pass)){ authUI.loginError.textContent = 'Contraseña incorrecta.'; return; }
-      store.setSession(email);
+      try {
+        const response = await fetch("/login", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: email,
+            password: pass
+          })
+        });
+        const data = await response.json();
+        if (data.code !== 0) {
+          authUI.loginError.textContent = ERROR_MESSAGES[data.code]; return;
+        }
+        store.setSession({
+          name: data.name,
+          email: data.email,
+          bio: data.bio
+        })
+      } catch (err) {
+        console.log(err)
+        authUI.loginError.textContent = 'Error al conectar con el servidor.'; return;
+      }
+      // store.setSession(email);
       toast('¡Bienvenido de nuevo!');
       app.init();
       authUI.showApp();
     });
 
     // REGISTER → volver a login (sin iniciar sesión)
-    authUI.registerForm.addEventListener('submit', (e) => {
+    authUI.registerForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       authUI.registerError.textContent = '';
       const name = $('#r_name').value.trim();
@@ -141,18 +171,43 @@
 
       if(pass.length < 6){ authUI.registerError.textContent = 'La contraseña debe tener al menos 6 caracteres.'; return; }
       if(pass !== pass2){ authUI.registerError.textContent = 'Las contraseñas no coinciden.'; return; }
-      const users = store.getUsers();
-      if(users[email]){ authUI.registerError.textContent = 'Ya existe una cuenta con ese email.'; return; }
-      const hue = Math.floor(Math.random()*360);
-      users[email] = { name, email, pass: hash(pass), bio, hue, theme: 'dark', favorites: [] };
-      store.setUsers(users);
+      try {
+        const response = await fetch("/register", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: email,
+            password: pass,
+            name: name,
+            bio: bio
+          })
+        });
+        const data = await response.json();
+        if (data.code !== 0) {
+          toast(ERROR_MESSAGES[data.code])
+          authUI.loginError.textContent = ERROR_MESSAGES[data.code]; 
+          return;
+        }
+        store.setSession({
+          name: data.name,
+          email: data.email,
+          bio: data.bio
+        })
+      } catch (err) {
+        console.log(err)
+        authUI.loginError.textContent = 'Error al conectar con el servidor.'; return;
+      }
+      // const hue = Math.floor(Math.random()*360);
+      // users[email] = { name, email, pass: hash(pass), bio, hue, theme: 'dark', favorites: [] };
+      // store.setUsers(users);
 
       // Volver a login, pre-rellenar email y enfocar la contraseña
       authUI.registerForm.reset();
-      authUI.setTab('login');
-      $('#li_email').value = email;
-      setTimeout(() => { $('#li_pass').focus(); }, 0);
-      toast('Cuenta creada. Ahora inicia sesión con tus credenciales.');
+      toast('Cuenta creada.');
+      app.init();
+      authUI.showApp();
     });
 
     /** =========================
@@ -186,22 +241,18 @@
         sendPost: $('#sendPost'),
       },
       user: null,
-  onlyFavs: false,
-      get sessionEmail(){ const s = store.getSession(); return s?.email || null; },
-      get users(){ return store.getUsers(); },
+      onlyFavs: false,
 
-      init(){
-        const email = this.sessionEmail;
-        if(!email){ authUI.showAuth(); return; }
-        this.user = this.users[email];
+      init() {
+        this.user = store.getSession();
         if(!this.user){ store.clearSession(); authUI.showAuth(); return; }
 
         // Theme
-        document.documentElement.setAttribute('data-theme', this.user.theme || 'dark');
+        document.documentElement.setAttribute('data-theme', store.getTheme());
 
         // Header info
         this.el.profileName.textContent = this.user.name || 'Tu Nombre';
-        this.el.avatar.style.background = getAvatarBg(this.user);
+        this.el.avatar.style.background = store.getColor();
         this.el.avatarInitials.textContent = initialsOf(this.user.name || this.user.email);
 
         // Favorites UI
@@ -213,19 +264,12 @@
         authUI.showApp();
       },
 
-      saveUser(next){
-        const users = this.users;
-        users[this.user.email] = Object.assign({}, this.user, next);
-        store.setUsers(users);
-        this.user = users[this.user.email];
-      },
-
       /* ---------- Favorites ---------- */
-      isFav(id){ return (this.user.favorites || []).includes(id); },
+      isFav(id){ return store.getFavourites().includes(id); },
       toggleFav(id){
-        const favs = new Set(this.user.favorites || []);
+        const favs = new Set(store.getFavourites());
         favs.has(id) ? favs.delete(id) : favs.add(id);
-        this.saveUser({ favorites: Array.from(favs) });
+        store.setFavourites(Array.from(favs));
         this.renderFavDropdown();
         this.renderChips();
         this.renderCards();
@@ -239,7 +283,7 @@
       renderChips(){
         const { chipsRow } = this.el;
         chipsRow.innerHTML = '';
-        const favs = this.user.favorites || [];
+        const favs = store.getFavourites();
        
         favs.forEach(id => {
           const subj = SUBJECTS.find(s=>s.id===id);
@@ -324,6 +368,43 @@
         });
       },
 
+      async updateUser() {
+        try {
+          const response = await fetch("/updateUser", {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              name: this.user.name,
+              bio: this.user.bio
+            })
+          });
+          const data = await response.json();
+          if (data.code === 21) {
+            store.clearSession();
+            toast('Sesión caducada');
+            store.clearSession();
+            try {
+              const response = await fetch("/logout", {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                }
+              });
+            } catch (err) {
+              console.log(err)
+              authUI.loginError.textContent = 'Error al conectar con el servidor.'; return;
+            }
+            setTimeout(()=>location.reload(), 400);
+            return;
+          }
+        } catch (err) {
+          console.log(err)
+          authUI.loginError.textContent = 'Error al conectar con el servidor.'; return;
+        }
+      },
+
       /* ---------- Events wiring ---------- */
       wire(){
         // Profile menu
@@ -344,7 +425,7 @@
           this.el.p_bio.value = this.user?.bio || '';
           // Pintar swatches + seleccionar actual
           this.renderSwatches();
-          const current = getAvatarBg(this.user);
+          const current = store.getColor();
           this.selectColor(current);
           this.el.p_color.value = current;
           modals.open('#profileModal');
@@ -353,19 +434,34 @@
           const name = this.el.p_name.value.trim();
           const bio = this.el.p_bio.value.trim();
           const avatarColor = this.el.p_color.value;
-          this.saveUser({ name, bio, avatarColor }); // guardamos hex
+          this.user.name = name
+          this.user.bio = bio
+          this.updateUser()
+          store.setColor(avatarColor)
+          //this.saveUser({ name, bio, avatarColor }); // guardamos hex
           // Refrescar UI
           this.el.profileName.textContent = this.user.name || 'Tu Nombre';
-          this.el.avatar.style.background = getAvatarBg(this.user);
+          this.el.avatar.style.background = store.getColor();
           this.el.avatarInitials.textContent = initialsOf(this.user.name || this.user.email);
           toast('Perfil actualizado');
           modals.close('#profileModal');
         });
 
         // Logout
-        this.el.btnLogout.addEventListener('click', () => {
+        this.el.btnLogout.addEventListener('click', async () => {
           store.clearSession();
-          toast('Sesión cerrada');
+          try {
+            const response = await fetch("/logout", {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            });
+            toast('Sesión cerrada');
+          } catch (err) {
+            console.log(err)
+            authUI.loginError.textContent = 'Error al conectar con el servidor.'; return;
+          }
           setTimeout(()=>location.reload(), 400);
         });
 
@@ -379,8 +475,8 @@
 
         // Theme
         this.el.themeToggle.addEventListener('click', () => {
-          const next = (this.user.theme === 'dark') ? 'light' : 'dark';
-          this.saveUser({ theme: next });
+          const next = (store.getTheme() === 'dark') ? 'light' : 'dark';
+          store.setTheme(next);
           document.documentElement.setAttribute('data-theme', next);
         });
 

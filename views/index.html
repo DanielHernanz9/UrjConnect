@@ -38,7 +38,6 @@
               <div class="field">
                 <label for="li_pass">Contraseña</label>
                 <input id="li_pass" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required />
-                <small>Demo sólo frontend. No uses contraseñas reales.</small>
               </div>
               <div class="actions">
                 <button class="btn" type="submit">Entrar</button>
@@ -208,6 +207,12 @@
       </div>
     </article>
   </template>
+  {{#jsonUser}}
+  <script>
+    const user = {{{jsonUser}}}
+    sessionStorage.setItem('session', JSON.stringify(user));
+  </script>
+  {{/jsonUser}}
   <script src="/app.js"></script>
 </body>
 </html>

@@ -10,7 +10,6 @@ export function login(email, password) {
     }
     const token = generateRandomToken();
     sessions[token] = user;
-    console.log(sessions)
     return token;
 }
 
@@ -30,4 +29,8 @@ export function authenticate(token) {
 
 function generateRandomToken() {
     return randomBytes(16).toString('hex');
+}
+
+export function logout(token) {
+    delete sessions[token];
 }

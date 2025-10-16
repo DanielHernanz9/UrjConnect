@@ -1,3 +1,9 @@
-1: Usuario no existe
-2: Contraseña incorrecta
-3: Usuario ya existe
+Login:
+    1: Usuario no existe
+    2: Contraseña incorrecta
+
+Register:    
+    11: Usuario ya existe
+
+Auth:
+    21: cookie invalida
