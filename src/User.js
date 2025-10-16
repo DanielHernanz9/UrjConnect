@@ -3,6 +3,10 @@ import fs from 'fs';
 
 const USERS_DIR = "data/users/"
 
+if (!fs.existsSync(USERS_DIR)) {
+    fs.mkdirSync(USERS_DIR, { recursive: true })
+}
+
 export default class User {
     constructor(email, password, name, bio) {
         this.email = email
