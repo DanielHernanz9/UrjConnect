@@ -6,7 +6,7 @@
     "start": "node src/app.js",
     "watch": "nodemon -e js,html,css src/app.js"
   },
-  "author": "Daniel, Fonsi, Marcos, Raul",
+  "author": "Daniel, Alberto, Javier, Anthony, Alejandro, Victor, Lucca, Antonio",
   "license": "ISC",
   "description": "",
   "dependencies": {
