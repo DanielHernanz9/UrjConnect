@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>URJConnect — Detalles de {{subject.name}}</title>
+  <meta name="description" content="Detalles de la asignatura {{subject.name}}" />
+  <link href="/css/styles.css" rel="stylesheet" />
+</head>
+<body>
+  <main class="container">
+    <header style="display:flex;align-items:center;gap:12px;margin:18px 0;">
+      <a href="/" style="text-decoration:none;color:inherit;">← Volver</a>
+      <h1 style="margin:0; font-size:20px;">{{subject.name}}</h1>
+    </header>
+
+    <section class="glass" style="padding:18px; border-radius:12px;">
+      <div style="display:flex;gap:16px;align-items:center;">
+        {{#subject.icon}}
+        <div style="width:64px;height:64px;display:grid;place-items:center;border-radius:10px; overflow:hidden;">
+          <img src="{{subject.icon}}" alt="Icono {{subject.name}}" style="width:64px;height:64px;object-fit:contain;" />
+        </div>
+        {{/subject.icon}}
+        <div>
+          <p style="margin:0 0 6px; color:var(--muted-2);">ID: <strong>{{subject.id}}</strong></p>
+          <p style="margin:0;">{{subject.desc}}</p>
+        </div>
+      </div>
+
+      <div style="margin-top:18px; display:flex; gap:8px;">
+        <a class="link" href="/" style="text-decoration:none;">Volver</a>
+        <button class="enter" id="enterForum">Entrar al foro</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Cuando se pulse Entrar, redirigimos al index y abrimos el modal (si hace falta)
+    document.getElementById('enterForum')?.addEventListener('click', () => {
+      // Simplemente redirige al index; la aplicación cliente puede abrir el modal si detecta hash/query
+      window.location.href = '/';
+    });
+  </script>
+</body>
+</html>

@@ -352,7 +352,11 @@
           // No modificamos atributos disabled aquí; los botones en la plantilla
           // no deben incluir disabled por defecto. Solo añadimos handlers.
           detailsBtn.setAttribute('aria-label', `Detalles de ${s.name}`);
-          detailsBtn.addEventListener('click', (e) => { e.stopPropagation(); forum.open(s); });
+          detailsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Navegar a la ruta de detalles en el servidor
+            window.location.href = `/subject/${encodeURIComponent(s.id)}/details`;
+          });
 
           enterBtn.setAttribute('aria-label', `Entrar al foro de ${s.name}`);
           enterBtn.addEventListener('click', (e) => { e.stopPropagation(); forum.open(s); });

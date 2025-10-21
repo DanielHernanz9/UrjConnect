@@ -95,4 +95,18 @@ router.post("/logout", (req, res) => {
     res.send()
 })
 
+//renderizar pagina de detalles de la asignatura
+router.get('/subject/:id/details', (req, res) => {
+    const id = req.params.id;
+    // Pasamos solo el id; la página cliente puede usarlo para mostrar detalles o cargar datos.
+    res.render('subject', { subject: { id } });
+});
+
+//renderizar página del foro
+router.get('/subject/:id/forum', (req, res) => {
+    const id = req.params.id;
+    // Pasamos solo el id; la página cliente puede usarlo para mostrar detalles o cargar datos.
+    res.render('', { subject: { id } });
+});
+
 export default router;
