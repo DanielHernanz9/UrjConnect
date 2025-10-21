@@ -237,9 +237,14 @@
 }
     
 
-    /* Botones de card */
-    .card .cta .link, .card .cta .enter { opacity: 0.65; cursor: not-allowed; }
-    .card button[disabled]:hover { transform: none !important; }
+   /* Botones de card */
+   /* Mostrar como habilitados por defecto */
+   .card .cta .link, .card .cta .enter { opacity: 1; cursor: pointer; transition: transform .12s ease, box-shadow .12s ease; }
+   .card .cta .link:hover, .card .cta .enter:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(0,0,0,0.12); }
+   /* Si un botón tiene el atributo disabled, mostrar not-allowed
+     y aspecto más oscuro (para compatibilidad con casos puntuales) */
+   .card button[disabled] { opacity: 0.6; cursor: not-allowed; filter: grayscale(30%); }
+   .card button[disabled]:hover { transform: none !important; }
     .fav-toggle { cursor: pointer; }
 
     .fav-toggle { border: 0; background: transparent; font-size: 20px; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3)); color: #ccc; transition: color 0.2s; }

@@ -349,10 +349,13 @@
 
           const detailsBtn = $('[data-details]', node);
           const enterBtn = $('[data-enter]', node);
-          detailsBtn.setAttribute('disabled', 'true');
-          detailsBtn.setAttribute('aria-disabled', 'true');
-          enterBtn.setAttribute('disabled', 'true');
-          enterBtn.setAttribute('aria-disabled', 'true');
+          // No modificamos atributos disabled aquí; los botones en la plantilla
+          // no deben incluir disabled por defecto. Solo añadimos handlers.
+          detailsBtn.setAttribute('aria-label', `Detalles de ${s.name}`);
+          detailsBtn.addEventListener('click', (e) => { e.stopPropagation(); forum.open(s); });
+
+          enterBtn.setAttribute('aria-label', `Entrar al foro de ${s.name}`);
+          enterBtn.addEventListener('click', (e) => { e.stopPropagation(); forum.open(s); });
 
           // Hover 3D visual
           node.addEventListener('mousemove', (e) => {
