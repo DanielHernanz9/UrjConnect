@@ -12,7 +12,7 @@
     <body>
         <div class="aurora" aria-hidden="true"></div>
         <main>
-            <!-- ============ AUTH (solo formulario centrado + URJConnect) ============ -->
+            <!-- ============ AUTH  ============ -->
             <section id="auth" aria-label="Acceso">
                 <div class="auth-shell">
                     <div class="auth-brand" aria-label="Marca">
@@ -110,7 +110,7 @@
                         <div class="profile">
                             <button class="profile-btn" id="profileButton" aria-expanded="false" aria-controls="profileMenu">
                                 <div class="avatar" id="avatar">
-                                    <span id="avatarInitials">AH</span>
+                                    <span id="avatarInitials"></span>
                                 </div>
                                 <span id="profileName">Tu Nombre</span>
                             </button>
@@ -138,30 +138,28 @@
         <!-- ============ MODALS ============ -->
         <div class="modal" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
             <div class="content glass">
-                <div class="head">
-                    <h3 id="profileTitle">Editar perfil</h3>
-                    <button class="close" data-close="#profileModal">Cerrar</button>
-                </div>
                 <div class="body">
-                    <div class="row">
-                        <div class="field">
-                            <label for="p_name">Nombre</label>
-                            <input id="p_name" type="text" />
+                    <h3 id="profileTitle" style="margin: 0 0 8px 0">Editar perfil</h3>
+                    <small class="hint">Actualiza tu nombre, color de avatar y una breve bio.</small>
+
+                    <div class="field" style="margin-top: 12px">
+                        <label for="p_name">Nombre</label>
+                        <input id="p_name" type="text" placeholder="Tu nombre" style="width: 100%; max-width: 420px" />
+                    </div>
+
+                    <div class="field" style="margin-top: 10px">
+                        <label for="p_color">Color del avatar</label>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px">
+                            <div class="swatches" id="p_swatches" aria-hidden="true"></div>
+                            <input id="p_color" type="color" value="#6366f1" aria-label="Color personalizado" />
                         </div>
-                        <div class="field">
-                            <label>Color del avatar</label>
-                            <div class="swatches" id="p_swatches"></div>
-                            <div class="color-row">
-                                <input id="p_color" type="color" value="#6366f1" aria-label="Color personalizado" />
-                                <small class="hint">O elige un color personalizado</small>
-                            </div>
-                        </div>
+                        <small class="hint">Elige un color para tu avatar o usa uno de los swatches.</small>
                     </div>
                     <div class="field">
                         <label for="p_bio">Bio</label>
-                        <textarea id="p_bio" rows="3"></textarea>
+                        <textarea id="p_bio" rows="3" placeholder="Cuéntanos algo breve sobre ti..."></textarea>
                     </div>
-                    <div class="actions">
+                    <div class="actions" style="justify-content: flex-end">
                         <button class="btn" id="saveProfile">Guardar cambios</button>
                         <button class="btn secondary" data-close="#profileModal">Cancelar</button>
                     </div>

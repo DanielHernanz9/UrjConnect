@@ -487,25 +487,39 @@ label {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
     box-shadow: var(--shadow);
     transform-style: preserve-3d;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    transition: transform 840ms cubic-bezier(0.16, 0.84, 0.24, 1), box-shadow 260ms cubic-bezier(0.2, 0.9, 0.2, 1), border-color 220ms ease;
+    transform: translateY(0) scale(1);
+    transform-origin: center bottom;
+    will-change: transform, box-shadow;
     perspective: 1000px;
 }
+[data-theme="light"] .card:hover,
 .card:hover {
+    animation: card-grow 0.35s forwards ease;
     box-shadow: var(--shadow-2);
     border-color: rgba(255, 255, 255, 0.28);
 }
 [data-theme="dark"] .card:hover {
-    /* stronger, warmer shadow and slight lift in dark mode to match light-mode pop */
     box-shadow: 0 26px 90px rgba(0, 0, 0, 0.62);
     border-color: rgba(202, 16, 46, 0.18);
-    transform: translateY(-4px);
 }
 
 [data-theme="dark"] .card .spark {
-    /* make the internal glow more visible in dark */
     filter: blur(90px);
     opacity: 0.85;
 }
+
+/* card grow — suave, sin rebotes, lineal-elegante */
+@keyframes card-grow {
+    0% {
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        transform: translateY(-4px) scale(1.02);
+    }
+}
+
+/* spark inside card */
 .card .spark {
     position: absolute;
     inset: -60% -60% auto auto;

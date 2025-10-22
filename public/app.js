@@ -395,7 +395,7 @@ const app = {
             list = list.filter((s) => this.isFav(s.id));
         }
         if (q) {
-            list = list.filter((s) => s.name.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q));
+            list = list.filter((s) => s.name.toLowerCase().includes(q));
         }
         // Orden: favoritos primero
         list.sort((a, b) => {
@@ -459,18 +459,7 @@ const app = {
                 forum.open(s);
             });
 
-            // Hover 3D visual
-            node.addEventListener("mousemove", (e) => {
-                const r = node.getBoundingClientRect();
-                const cx = e.clientX - r.left,
-                    cy = e.clientY - r.top;
-                const rx = (cy / r.height - 0.5) * -6;
-                const ry = (cx / r.width - 0.5) * 8;
-                node.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) translateZ(0)`;
-            });
-            node.addEventListener("mouseleave", () => {
-                node.style.transform = "rotateX(0) rotateY(0)";
-            });
+            // Hover visual handled by CSS. JavaScript no longer modifies transform on mouse events.
 
             g.appendChild(node);
         });
