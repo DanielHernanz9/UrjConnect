@@ -325,6 +325,19 @@ label {
     background: var(--accent);
     box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.3), 0 8px 20px rgba(0, 0, 0, 0.35);
 }
+
+/* Navbar-specific larger logo without changing the auth/login logo */
+.app-header .brand .logo {
+    width: 54px;
+    height: 54px;
+    border-radius: 12px;
+}
+@media (max-width: 520px) {
+    .app-header .brand .logo {
+        width: 44px;
+        height: 44px;
+    }
+}
 .brand-wordmark {
     font-weight: 900;
     font-size: clamp(16px, 2.2vw, 20px);
