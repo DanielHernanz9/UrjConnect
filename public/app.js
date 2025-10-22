@@ -371,6 +371,10 @@ const app = {
         const { chipsRow } = this.el;
         chipsRow.innerHTML = "";
         const favs = store.getFavourites();
+        if (!favs || favs.length === 0) {
+            // No mostrar mensaje cuando no hay favoritos: dejamos el contenedor vacío
+            return;
+        }
 
         favs.forEach((id) => {
             const subj = SUBJECTS.find((s) => s.id === id);
