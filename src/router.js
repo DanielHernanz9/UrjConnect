@@ -18,6 +18,15 @@ const COOKIEOPTIONSDELETE = {
     path: '/'
 }
 
+// middleware para rutas que requieren sesión
+function withAuth(req, res, next){
+    if(req.cookies && req.cookies.session_id){
+        const user = auth.authenticate(req.cookies.session_id);
+        if(user){ req.user = user; return next(); }
+    }
+    return res.redirect('/');
+}
+
 router.get("/", (req, res) => {
     if ((req.cookies && req.cookies.session_id)) {
         const user = auth.authenticate(req.cookies.session_id)
@@ -96,17 +105,17 @@ router.post("/logout", (req, res) => {
 })
 
 //renderizar pagina de detalles de la asignatura
-router.get('/subject/:id/details', (req, res) => {
+router.get('/subject/:id/details', withAuth, (req, res) => {
     const id = req.params.id;
-    // Pasamos solo el id; la página cliente puede usarlo para mostrar detalles o cargar datos.
-    res.render('subject', { subject: { id } });
+    const jsonUser = JSON.stringify({ name: req.user.getName(), email: req.user.getEmail(), bio: req.user.getBio() });
+    res.render('subject', { subject: { id }, jsonUser });
 });
 
 //renderizar página del foro
-router.get('/subject/:id/forum', (req, res) => {
+router.get('/subject/:id/forum', withAuth, (req, res) => {
     const id = req.params.id;
-    // Pasamos solo el id; la página cliente puede usarlo para mostrar detalles o cargar datos.
-    res.render('', { subject: { id } });
+    const jsonUser = JSON.stringify({ name: req.user.getName(), email: req.user.getEmail(), bio: req.user.getBio() });
+    res.render('forum', { subject: { id }, jsonUser });
 });
 
 export default router;

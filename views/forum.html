@@ -1,11 +1,24 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
-    
-</body>
+<html lang="en" data-theme="dark">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Document</title>
+    </head>
+    <body>
+        <script>
+            // Sincronizar tema entre pestañas/páginas: leer al cargar y escuchar storage
+            (function () {
+                const apply = (t) => {
+                    if (t) document.documentElement.setAttribute("data-theme", t);
+                };
+                try {
+                    apply(localStorage.getItem("theme") || "dark");
+                } catch (e) {}
+                window.addEventListener("storage", (e) => {
+                    if (e.key === "theme") apply(e.newValue || "dark");
+                });
+            })();
+        </script>
+    </body>
 </html>

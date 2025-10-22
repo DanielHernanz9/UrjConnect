@@ -481,6 +481,18 @@ label {
     box-shadow: var(--shadow-2);
     border-color: rgba(255, 255, 255, 0.28);
 }
+[data-theme="dark"] .card:hover {
+    /* stronger, warmer shadow and slight lift in dark mode to match light-mode pop */
+    box-shadow: 0 26px 90px rgba(0, 0, 0, 0.62);
+    border-color: rgba(202, 16, 46, 0.18);
+    transform: translateY(-4px);
+}
+
+[data-theme="dark"] .card .spark {
+    /* make the internal glow more visible in dark */
+    filter: blur(90px);
+    opacity: 0.85;
+}
 .card .spark {
     position: absolute;
     inset: -60% -60% auto auto;
@@ -773,4 +785,35 @@ input[type="color"] {
 .toast.show {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
+}
+
+/* Style for the 'Favoritos' filter button: match chip size/shape but keep color */
+#filterFavsBtn {
+    padding: 8px 12px;
+    background: var(--chip);
+    border: 1px solid var(--chip-border);
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    cursor: pointer;
+    font-weight: 400; /* quitar negrita */
+    font-size: 13px; /* mas pequeño */
+}
+/* Keep the same color when hovered/pressed, but give a subtle visual cue */
+#filterFavsBtn:hover {
+    filter: brightness(1.03);
+}
+#filterFavsBtn.pressed {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+/* Dark mode: stronger hover/pressed effect to match light-mode brightness */
+[data-theme="dark"] #filterFavsBtn:hover {
+    filter: brightness(1.12);
+    box-shadow: 0 10px 30px rgba(202, 16, 46, 0.08);
+}
+[data-theme="dark"] #filterFavsBtn.pressed {
+    box-shadow: 0 14px 40px rgba(202, 16, 46, 0.12);
 }
