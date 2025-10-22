@@ -126,7 +126,16 @@ const store = {
     },
 };
 
-try{const el=document.getElementById('__initialUser');if(el){const raw=el.textContent.trim();if(raw){const u=JSON.parse(raw);if(u)store.setSession(u);}}}catch(e){}
+try {
+    const el = document.getElementById("__initialUser");
+    if (el) {
+        const raw = el.textContent.trim();
+        if (raw) {
+            const u = JSON.parse(raw);
+            if (u) store.setSession(u);
+        }
+    }
+} catch (e) {}
 
 /** =========================
  *  Autenticación (localStorage)
