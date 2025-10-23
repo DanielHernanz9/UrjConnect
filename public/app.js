@@ -574,6 +574,11 @@ const app = {
             this.onlyFavs = !this.onlyFavs;
             this.el.filterFavsBtn.setAttribute("aria-pressed", String(this.onlyFavs));
             this.el.filterFavsBtn.classList.toggle("pressed", this.onlyFavs);
+            // Actualizar estrella visual dentro del botón
+            const star = this.el.filterFavsBtn.querySelector(".star");
+            if (star) star.textContent = this.onlyFavs ? "★" : "☆";
+            // Actualizar aria-label para accesibilidad
+            this.el.filterFavsBtn.setAttribute("aria-label", this.onlyFavs ? "Mostrar solo favoritos (activado)" : "Mostrar solo favoritos (desactivado)");
             this.renderCards();
         });
 
