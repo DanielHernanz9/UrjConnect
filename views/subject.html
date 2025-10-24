@@ -10,8 +10,8 @@
     <body>
         <main class="container">
             <header style="display: flex; align-items: center; gap: 12px; margin: 18px 0">
-                <a href="/" style="text-decoration: none; color: inherit">← Volver</a>
-                <h1 style="margin: 0; font-size: 20px">{{subject.name}}</h1>
+                <a href="/" style="text-decoration: none; color: inherit"><Strong>← Volver</Strong></a>
+                <!--<h1 style="margin: 0; font-size: 20px">{{subject.name}}</h1>-->
             </header>
 
             <section class="glass" style="padding: 18px; border-radius: 12px">
@@ -22,7 +22,8 @@
                     </div>
                     {{/subject.icon}}
                     <div>
-                        <p style="margin: 0 0 6px; color: var(--muted-2)"><strong>{{subject.id}}</strong></p>
+                        <p style="margin: 0 0 6px; color: var(--muted-2);"><strong>{{subject.name}}</strong></p>
+                        <h4>Descipción: </h4>
                         <p style="margin: 0">{{subject.desc}}</p>
                     </div>
                 </div>

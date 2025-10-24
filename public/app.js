@@ -9,16 +9,8 @@
 /** =========================
  *  Datos base
  *  ========================= */
-const SUBJECTS = [
-    { id: "matematicas", name: "Matemáticas", color: "linear-gradient(135deg,#6366f1,#06b6d4)", desc: "Álgebra, cálculo, estadísticas y más.", icon: "/assets/mates.png" },
-    { id: "lengua", name: "Lengua", color: "linear-gradient(135deg,#f43f5e,#f59e0b)", desc: "Gramática, comentario de texto y literatura.", icon: "/assets/Lengua.png" },
-    { id: "historia", name: "Historia", color: "linear-gradient(135deg,#0ea5e9,#22c55e)", desc: "Desde la Antigüedad hasta la actualidad.", icon: "/assets/Historia.png" },
-    { id: "biologia", name: "Biología", color: "linear-gradient(135deg,#22c55e,#14b8a6)", desc: "Genética, ecología y biotecnología.", icon: "/assets/Biologia.png" },
-    { id: "fisica", name: "Física", color: "linear-gradient(135deg,#06b6d4,#8b5cf6)", desc: "Mecánica, ondas, electricidad y magnetismo.", icon: "/assets/Fisica.png" },
-    { id: "quimica", name: "Química", color: "linear-gradient(135deg,#f59e0b,#ec4899)", desc: "Reacciones, orgánica y química de materiales.", icon: "/assets/quimica.png" },
-    { id: "ingles", name: "Inglés", color: "linear-gradient(135deg,#8b5cf6,#22c55e)", desc: "Speaking, writing, grammar & vocabulary.", icon: "/assets/ingles.png" },
-    { id: "informatica", name: "Informática", color: "linear-gradient(135deg,#ec4899,#6366f1)", desc: "Programación, redes y desarrollo web.", icon: "/assets/informatica.png" },
-];
+// removed static client SUBJECTS - will be loaded from server
+let SUBJECTS = [];
 
 /** =========================
  *  Helpers
@@ -452,8 +444,8 @@ const app = {
             // no deben incluir disabled por defecto. Solo añadimos handlers.
             detailsBtn.setAttribute("aria-label", `Detalles de ${s.name}`);
             detailsBtn.addEventListener("click", (e) => {
+                e.preventDefault();  // ← esto evita la recarga
                 e.stopPropagation();
-                // Navegar a la ruta de detalles en el servidor
                 window.location.href = `/subject/${encodeURIComponent(s.id)}/details`;
             });
 
@@ -714,12 +706,75 @@ app.wire();
 authUI.measureInit();
 authUI.setTab("login");
 
-if (store.getSession()) {
-    app.init();
-    authUI.showApp();
-} else {
-    authUI.showAuth();
+async function loadSubjects() {
+    try {
+        const response = await fetch("/api/subjects");
+        if (!response.ok) throw new Error("Error al obtener asignaturas");
+        const subjects = await response.json();
+        
+        // Guardarlas en la variable global
+        SUBJECTS = subjects;
+
+        // Renderizar las tarjetas en el HTML
+        //app.renderCards();
+
+        return subjects;
+    } catch (err) {
+        console.error("Error cargando asignaturas:", err);
+        return [];
+    }
 }
+
+// cargar asignaturas y luego inicializar la app / hidratar página de detalles
+loadSubjects().then(() => {
+    if (store.getSession()) {
+        app.init();
+        authUI.showApp();
+    } else {
+        authUI.showAuth();
+    }
+
+    // Hidratar la página de detalles si corresponde
+    (async function hydrateSubjectDetailsFromClient() {
+        const m = location.pathname.match(/^\/subject\/([^/]+)\/details\/?$/);
+        if (!m) return;
+        const id = decodeURIComponent(m[1]);
+        const subject = await getSubjectByIdClient(id);
+        const elTitle = document.getElementById("subjectTitle");
+        const elCode = document.getElementById("subjectCode");
+        const elDesc = document.getElementById("subjectDescription");
+        const elCredits = document.getElementById("subjectCredits");
+        const elProfessor = document.getElementById("subjectProfessor");
+        const elSchedule = document.getElementById("subjectSchedule");
+        const elIcon = document.getElementById("subjectIcon");
+
+        if (elTitle) elTitle.textContent = subject.name || subject.title || "";
+        if (elCode && subject.code) elCode.textContent = subject.code;
+        if (elDesc) elDesc.textContent = subject.desc || subject.desc || "";
+        if (elCredits && subject.credits != null) elCredits.textContent = String(subject.credits);
+        if (elProfessor && subject.professor) elProfessor.textContent = subject.professor;
+        if (elSchedule && subject.schedule) elSchedule.textContent = subject.schedule;
+        if (elIcon) {
+            if (subject.icon) {
+                if (elIcon.tagName === "IMG") elIcon.src = subject.icon;
+                else elIcon.innerHTML = `<img src="${subject.icon}" alt="Icono ${subject.name}">`;
+            } else {
+                elIcon.style.display = "none";
+            }
+        }
+
+        if (subject.name) document.title = `${subject.name} — Detalles`;
+    })();
+}).catch((err) => {
+    console.error(err);
+    // fallback: inicializar UI aunque no se hayan cargado subjects
+    if (store.getSession()) {
+        app.init();
+        authUI.showApp();
+    } else {
+        authUI.showAuth();
+    }
+});
 
 // Escuchar cambios de theme desde otras pestañas y sincronizar
 window.addEventListener("storage", (e) => {
