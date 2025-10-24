@@ -15,17 +15,25 @@
             </header>
 
             <section class="glass" style="padding: 18px; border-radius: 12px">
-                <div style="display: flex; gap: 16px; align-items: center">
+                <div style="display: flex; gap: 16px; align-items: flex-start">
                     {{#subject.icon}}
-                    <div style="width: 64px; height: 64px; display: grid; place-items: center; border-radius: 10px; overflow: hidden">
-                        <img src="{{subject.icon}}" alt="Icono {{subject.name}}" style="width: 64px; height: 64px; object-fit: contain" />
+                    <div style="width: 64px; height: 64px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; overflow: hidden; background: var(--muted-1)">
+                        <img src="{{subject.icon}}" alt="Icono {{subject.name}}" style="width: 100%; height: 100%; object-fit: contain" />
                     </div>
                     {{/subject.icon}}
-                    <div>
-                        <p style="margin: 0 0 6px; color: var(--muted-2);"><strong>{{subject.name}}</strong></p>
-                        <h4>Descipción: </h4>
-                        <p style="margin: 0">{{subject.desc}}</p>
-                    </div>
+                    <div style="flex: 1">
+                            <!-- Nombre de la asignatura -->
+                            <h1 style="margin: 0 0 16px; font-size: 32px; font-weight: 700; color: var(--primary);">{{subject.name}}</h1>
+                            
+                            <p style="margin: 0 0 16px; font-size: 16px;"><strong>Créditos:</strong> {{subject.credits}}</p>
+                            <p style="margin: 0 0 16px; font-size: 16px;"><strong>Profesor:</strong> {{subject.professor}}</p>
+                            <p style="margin: 0 0 16px; font-size: 16px;"><strong>Horario:</strong> {{subject.schedule}}</p>
+
+                            <!-- Descripción detallada -->
+                            <p style="font-size: 16px; line-height: 1.6;"><strong>Descripción detallada:</strong></p>
+                            <p style="font-size: 16px;">{{subject.description}}</p>
+
+                        </div>
                 </div>
 
                 <div style="margin-top: 18px; display: flex; gap: 8px">
