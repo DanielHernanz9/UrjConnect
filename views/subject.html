@@ -42,6 +42,27 @@
                 </div>
             </section>
         </main>
-         <script src="/app.js" defer></script>
+
+        <script>
+            // Cuando se pulse Entrar, redirigimos al index y abrimos el modal (si hace falta)
+            document.getElementById("enterForum")?.addEventListener("click", () => {
+                // Simplemente redirige al index; la aplicación cliente puede abrir el modal si detecta hash/query
+                window.location.href = "/";
+            });
+        </script>
+        <script>
+            // Sincronizar tema entre pestañas/páginas: leer al cargar y escuchar storage
+            (function () {
+                const apply = (t) => {
+                    if (t) document.documentElement.setAttribute("data-theme", t);
+                };
+                try {
+                    apply(localStorage.getItem("theme") || "dark");
+                } catch (e) {}
+                window.addEventListener("storage", (e) => {
+                    if (e.key === "theme") apply(e.newValue || "dark");
+                });
+            })();
+        </script>
     </body>
 </html>
