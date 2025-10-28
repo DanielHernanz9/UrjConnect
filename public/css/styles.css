@@ -289,6 +289,10 @@ label {
     color: var(--muted);
     font-size: 13px;
 }
+[data-theme="light"] .hint {
+    color: var(--text);
+    font-weight: 500;
+}
 .grid .hint {
     display: flex;
     align-items: center;

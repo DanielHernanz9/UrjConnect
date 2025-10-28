@@ -174,114 +174,119 @@ const authUI = {
     },
 };
 
-authUI.btnLoginTab.addEventListener("click", () => authUI.setTab("login"));
-authUI.btnRegisterTab.addEventListener("click", () => authUI.setTab("register"));
-authUI.swapToLogin?.addEventListener("click", (e) => {
-    e.preventDefault();
-    authUI.setTab("login");
-});
+if (authUI.btnLoginTab) authUI.btnLoginTab.addEventListener("click", () => authUI.setTab("login"));
+if (authUI.btnRegisterTab) authUI.btnRegisterTab.addEventListener("click", () => authUI.setTab("register"));
+if (authUI.swapToLogin)
+    authUI.swapToLogin.addEventListener("click", (e) => {
+        e.preventDefault();
+        authUI.setTab("login");
+    });
 
-window.addEventListener("resize", () => {
-    // Mantener centrado y altura correcta en cambios de viewport
-    const active = authUI.loginForm.classList.contains("active") ? authUI.loginForm : authUI.registerForm;
-    authUI.formsWrap.style.height = active.offsetHeight + "px";
-});
+if (authUI.loginForm && authUI.registerForm && authUI.formsWrap) {
+    window.addEventListener("resize", () => {
+        // Mantener centrado y altura correcta en cambios de viewport
+        const active = authUI.loginForm.classList.contains("active") ? authUI.loginForm : authUI.registerForm;
+        authUI.formsWrap.style.height = active.offsetHeight + "px";
+    });
+}
 
 // LOGIN
-authUI.loginForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    authUI.loginError.textContent = "";
-    const email = $("#li_email").value.trim().toLowerCase();
-    const pass = $("#li_pass").value;
-    try {
-        const response = await fetch("/login", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                email: email,
-                password: pass,
-            }),
-        });
-        const data = await response.json();
-        if (data.code !== 0) {
-            authUI.loginError.textContent = ERROR_MESSAGES[data.code];
+if (authUI.loginForm)
+    authUI.loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        authUI.loginError.textContent = "";
+        const email = $("#li_email").value.trim().toLowerCase();
+        const pass = $("#li_pass").value;
+        try {
+            const response = await fetch("/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    email: email,
+                    password: pass,
+                }),
+            });
+            const data = await response.json();
+            if (data.code !== 0) {
+                authUI.loginError.textContent = ERROR_MESSAGES[data.code];
+                return;
+            }
+            store.setSession({
+                name: data.name,
+                email: data.email,
+                bio: data.bio,
+            });
+        } catch (err) {
+            console.log(err);
+            authUI.loginError.textContent = "Error al conectar con el servidor.";
             return;
         }
-        store.setSession({
-            name: data.name,
-            email: data.email,
-            bio: data.bio,
-        });
-    } catch (err) {
-        console.log(err);
-        authUI.loginError.textContent = "Error al conectar con el servidor.";
-        return;
-    }
-    // store.setSession(email);
-    toast("¡Bienvenido de nuevo!");
-    app.init();
-    authUI.showApp();
-});
+        // store.setSession(email);
+        toast("¡Bienvenido de nuevo!");
+        app.init();
+        authUI.showApp();
+    });
 
 // REGISTER → volver a login (sin iniciar sesión)
-authUI.registerForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    authUI.registerError.textContent = "";
-    const name = $("#r_name").value.trim();
-    const email = $("#r_email").value.trim().toLowerCase();
-    const pass = $("#r_pass").value;
-    const pass2 = $("#r_pass2").value;
-    const bio = $("#r_bio").value.trim();
+if (authUI.registerForm)
+    authUI.registerForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        authUI.registerError.textContent = "";
+        const name = $("#r_name").value.trim();
+        const email = $("#r_email").value.trim().toLowerCase();
+        const pass = $("#r_pass").value;
+        const pass2 = $("#r_pass2").value;
+        const bio = $("#r_bio").value.trim();
 
-    if (pass.length < 6) {
-        authUI.registerError.textContent = "La contraseña debe tener al menos 6 caracteres.";
-        return;
-    }
-    if (pass !== pass2) {
-        authUI.registerError.textContent = "Las contraseñas no coinciden.";
-        return;
-    }
-    try {
-        const response = await fetch("/register", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                email: email,
-                password: pass,
-                name: name,
-                bio: bio,
-            }),
-        });
-        const data = await response.json();
-        if (data.code !== 0) {
-            toast(ERROR_MESSAGES[data.code]);
-            authUI.loginError.textContent = ERROR_MESSAGES[data.code];
+        if (pass.length < 6) {
+            authUI.registerError.textContent = "La contraseña debe tener al menos 6 caracteres.";
             return;
         }
-        store.setSession({
-            name: data.name,
-            email: data.email,
-            bio: data.bio,
-        });
-    } catch (err) {
-        console.log(err);
-        authUI.loginError.textContent = "Error al conectar con el servidor.";
-        return;
-    }
-    // const hue = Math.floor(Math.random()*360);
-    // users[email] = { name, email, pass: hash(pass), bio, hue, theme: 'dark', favorites: [] };
-    // store.setUsers(users);
+        if (pass !== pass2) {
+            authUI.registerError.textContent = "Las contraseñas no coinciden.";
+            return;
+        }
+        try {
+            const response = await fetch("/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    email: email,
+                    password: pass,
+                    name: name,
+                    bio: bio,
+                }),
+            });
+            const data = await response.json();
+            if (data.code !== 0) {
+                toast(ERROR_MESSAGES[data.code]);
+                authUI.loginError.textContent = ERROR_MESSAGES[data.code];
+                return;
+            }
+            store.setSession({
+                name: data.name,
+                email: data.email,
+                bio: data.bio,
+            });
+        } catch (err) {
+            console.log(err);
+            authUI.loginError.textContent = "Error al conectar con el servidor.";
+            return;
+        }
+        // const hue = Math.floor(Math.random()*360);
+        // users[email] = { name, email, pass: hash(pass), bio, hue, theme: 'dark', favorites: [] };
+        // store.setUsers(users);
 
-    // Volver a login, pre-rellenar email y enfocar la contraseña
-    authUI.registerForm.reset();
-    toast("Cuenta creada.");
-    app.init();
-    authUI.showApp();
-});
+        // Volver a login, pre-rellenar email y enfocar la contraseña
+        authUI.registerForm.reset();
+        toast("Cuenta creada.");
+        app.init();
+        authUI.showApp();
+    });
 
 /** =========================
  *  APP
@@ -575,11 +580,15 @@ const app = {
         });
 
         // Theme
-        this.el.themeToggle.addEventListener("click", () => {
-            const next = store.getTheme() === "dark" ? "light" : "dark";
-            store.setTheme(next);
-            document.documentElement.setAttribute("data-theme", next);
-        });
+        // Use a fresh lookup and guard in case the element wasn't present when app.el was created
+        const themeBtn = this.el.themeToggle || $("#themeToggle");
+        if (themeBtn) {
+            themeBtn.addEventListener("click", () => {
+                const next = store.getTheme() === "dark" ? "light" : "dark";
+                store.setTheme(next);
+                document.documentElement.setAttribute("data-theme", next);
+            });
+        }
 
         // Search
         this.el.search?.addEventListener("input", () => this.renderCards());
