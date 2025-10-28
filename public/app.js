@@ -787,3 +787,29 @@ window.addEventListener("storage", (e) => {
         } catch (err) {}
     }
 });
+
+
+    // Sincronizar tema entre pestañas/páginas: leer al cargar y escuchar storage
+    (function () {
+        const apply = (t) => {
+            if (t) document.documentElement.setAttribute("data-theme", t);
+        };
+        // Apply saved theme immediately
+        try {
+            apply(localStorage.getItem("theme") || "dark");
+        } catch (e) {}
+        // Listen for changes from other tabs
+        window.addEventListener("storage", (e) => {
+            if (e.key === "theme") apply(e.newValue || "dark");
+        });
+    })();
+
+    // --- Botón "Entrar al foro" (solo se ejecuta si existe) ---
+document.addEventListener("DOMContentLoaded", () => {
+    const btn = document.getElementById("enterForum");
+    if (btn) {
+        btn.addEventListener("click", () => {
+            window.location.href = "/";
+        });
+    }
+});

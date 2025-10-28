@@ -216,22 +216,6 @@
             {{{jsonUser}}}
         </script>
         {{/jsonUser}}
-        <script src="/app.js"></script>
-        <script>
-            // Sincronizar tema entre pestañas/páginas: leer al cargar y escuchar storage
-            (function () {
-                const apply = (t) => {
-                    if (t) document.documentElement.setAttribute("data-theme", t);
-                };
-                // Apply saved theme immediately
-                try {
-                    apply(localStorage.getItem("theme") || "dark");
-                } catch (e) {}
-                // Listen for changes from other tabs
-                window.addEventListener("storage", (e) => {
-                    if (e.key === "theme") apply(e.newValue || "dark");
-                });
-            })();
-        </script>
+        <script src="/app.js" defer></script>
     </body>
 </html>
