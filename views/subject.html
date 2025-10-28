@@ -8,13 +8,37 @@
         <link href="/css/styles.css" rel="stylesheet" />
     </head>
     <body>
-        <main class="container">
-            <header style="display: flex; align-items: center; gap: 12px; margin: 18px 0">
-                <a href="/" style="text-decoration: none; color: inherit"><Strong>← Volver</Strong></a>
-                <!--<h1 style="margin: 0; font-size: 20px">{{subject.name}}</h1>-->
+        <main class="app">
+            <header class="app-header glass">
+                <div class="brand">
+                    <a href="/" class="brand-link" style="display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: inherit">
+                        <div class="logo" aria-hidden="true">
+                            <img src="/assets/logo.png" alt="Logo URJConnect" style="width: 100%; height: 100%; object-fit: contain" />
+                        </div>
+                        <div class="brand-wordmark" aria-label="URJConnect">URJConnect</div>
+                    </a>
+                </div>
+
+                <div class="toolbar">
+                    <button class="icon-btn" id="themeToggle" title="Cambiar tema">🌓 Tema</button>
+                    <div class="divider"></div>
+
+                    <div class="profile">
+                        <button class="profile-btn" id="profileButton" aria-expanded="false" aria-controls="profileMenu">
+                            <div class="avatar" id="avatar">
+                                <span id="avatarInitials"></span>
+                            </div>
+                            <span id="profileName">Tu Nombre</span>
+                        </button>
+                        <div class="profile-menu dropdown" id="profileMenu">
+                            <button class="icon-btn" id="btnEditProfile">✏️ Editar perfil</button>
+                            <button class="icon-btn" id="btnLogout">🚪 Cerrar sesión</button>
+                        </div>
+                    </div>
+                </div>
             </header>
 
-            <section class="glass" style="padding: 18px; border-radius: 12px">
+            <section class="container glass" style="padding: 18px; border-radius: 12px">
                 <div style="display: flex; gap: 16px; align-items: flex-start">
                     {{#subject.icon}}
                     <div style="width: 64px; height: 64px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; overflow: hidden; background: var(--muted-1)">
@@ -22,31 +46,28 @@
                     </div>
                     {{/subject.icon}}
                     <div style="flex: 1">
-                            <!-- Nombre de la asignatura -->
-                            <h1 style="margin: 0 0 16px; font-size: 32px; font-weight: 700; color: var(--primary);">{{subject.name}}</h1>
-                            
-                            <p style="margin: 0 0 16px; font-size: 16px;"><strong>Créditos:</strong> {{subject.credits}}</p>
-                            <p style="margin: 0 0 16px; font-size: 16px;"><strong>Profesor:</strong> {{subject.professor}}</p>
-                            <p style="margin: 0 0 16px; font-size: 16px;"><strong>Horario:</strong> {{subject.schedule}}</p>
+                        <!-- Nombre de la asignatura -->
+                        <h1 style="margin: 0 0 16px; font-size: 32px; font-weight: 700; color: var(--primary)">{{subject.name}}</h1>
 
-                            <!-- Descripción detallada -->
-                            <p style="font-size: 16px; line-height: 1.6;"><strong>Descripción detallada:</strong></p>
-                            <p style="font-size: 16px;">{{subject.description}}</p>
+                        <p style="margin: 0 0 16px; font-size: 16px"><strong>Créditos:</strong> {{subject.credits}}</p>
+                        <p style="margin: 0 0 16px; font-size: 16px"><strong>Profesor:</strong> {{subject.professor}}</p>
+                        <p style="margin: 0 0 16px; font-size: 16px"><strong>Horario:</strong> {{subject.schedule}}</p>
 
-                        </div>
+                        <!-- Descripción detallada -->
+                        <p style="font-size: 16px; line-height: 1.6"><strong>Descripción detallada:</strong></p>
+                        <p style="font-size: 16px">{{subject.description}}</p>
+                    </div>
                 </div>
 
-                <div style="margin-top: 18px; display: flex; gap: 8px">
-                    <a class="link" href="/" style="text-decoration: none">Volver</a>
-                    <button class="enter" id="enterForum">Entrar al foro</button>
+                <div class="cta" style="margin-top: 18px; display: flex; gap: 8px">
+                    <button class="enter" data-enter id="enterForum">Entrar al foro</button>
                 </div>
             </section>
         </main>
 
         <script>
-            // Cuando se pulse Entrar, redirigimos al index y abrimos el modal (si hace falta)
+            // Cuando se pulse Entrar, redirigimos al index (la app cliente puede reaccionar si procede)
             document.getElementById("enterForum")?.addEventListener("click", () => {
-                // Simplemente redirige al index; la aplicación cliente puede abrir el modal si detecta hash/query
                 window.location.href = "/";
             });
         </script>

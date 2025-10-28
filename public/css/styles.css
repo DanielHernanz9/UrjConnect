@@ -670,6 +670,17 @@ label {
     justify-content: space-between;
     gap: 10px;
 }
+.cta .link,
+.cta .enter {
+    opacity: 1;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.cta .link:hover,
+.cta .enter:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+}
 .link {
     border: 0;
     background: var(--chip);

@@ -444,7 +444,7 @@ const app = {
             // no deben incluir disabled por defecto. Solo añadimos handlers.
             detailsBtn.setAttribute("aria-label", `Detalles de ${s.name}`);
             detailsBtn.addEventListener("click", (e) => {
-                e.preventDefault();  // ← esto evita la recarga
+                e.preventDefault(); // ← esto evita la recarga
                 e.stopPropagation();
                 window.location.href = `/subject/${encodeURIComponent(s.id)}/details`;
             });
@@ -696,22 +696,25 @@ $$("[data-close]").forEach((btn) =>
         modals.close(sel);
     })
 );
-$("#sendPost").addEventListener("click", () => forum.send());
+const sendPostBtn = $("#sendPost");
+if (sendPostBtn) sendPostBtn.addEventListener("click", () => forum.send());
 
 /** =========================
  *  Start
  *  ========================= */
 app.wire();
-// Medir altura inicial del bloque de forms y garantizar centrado
-authUI.measureInit();
-authUI.setTab("login");
+// Medir altura inicial del bloque de forms y garantizar centrado (solo si existe la sección de auth)
+if (authUI.authSection) {
+    authUI.measureInit();
+    authUI.setTab("login");
+}
 
 async function loadSubjects() {
     try {
         const response = await fetch("/api/subjects");
         if (!response.ok) throw new Error("Error al obtener asignaturas");
         const subjects = await response.json();
-        
+
         // Guardarlas en la variable global
         SUBJECTS = subjects;
 
@@ -726,55 +729,57 @@ async function loadSubjects() {
 }
 
 // cargar asignaturas y luego inicializar la app / hidratar página de detalles
-loadSubjects().then(() => {
-    if (store.getSession()) {
-        app.init();
-        authUI.showApp();
-    } else {
-        authUI.showAuth();
-    }
-
-    // Hidratar la página de detalles si corresponde
-    (async function hydrateSubjectDetailsFromClient() {
-        const m = location.pathname.match(/^\/subject\/([^/]+)\/details\/?$/);
-        if (!m) return;
-        const id = decodeURIComponent(m[1]);
-        const subject = await getSubjectByIdClient(id);
-        const elTitle = document.getElementById("subjectTitle");
-        const elCode = document.getElementById("subjectCode");
-        const elDesc = document.getElementById("subjectDescription");
-        const elCredits = document.getElementById("subjectCredits");
-        const elProfessor = document.getElementById("subjectProfessor");
-        const elSchedule = document.getElementById("subjectSchedule");
-        const elIcon = document.getElementById("subjectIcon");
-
-        if (elTitle) elTitle.textContent = subject.name || subject.title || "";
-        if (elCode && subject.code) elCode.textContent = subject.code;
-        if (elDesc) elDesc.textContent = subject.desc || subject.desc || "";
-        if (elCredits && subject.credits != null) elCredits.textContent = String(subject.credits);
-        if (elProfessor && subject.professor) elProfessor.textContent = subject.professor;
-        if (elSchedule && subject.schedule) elSchedule.textContent = subject.schedule;
-        if (elIcon) {
-            if (subject.icon) {
-                if (elIcon.tagName === "IMG") elIcon.src = subject.icon;
-                else elIcon.innerHTML = `<img src="${subject.icon}" alt="Icono ${subject.name}">`;
-            } else {
-                elIcon.style.display = "none";
-            }
+loadSubjects()
+    .then(() => {
+        if (store.getSession()) {
+            app.init();
+            if (authUI.authSection) authUI.showApp();
+        } else {
+            if (authUI.authSection) authUI.showAuth();
         }
 
-        if (subject.name) document.title = `${subject.name} — Detalles`;
-    })();
-}).catch((err) => {
-    console.error(err);
-    // fallback: inicializar UI aunque no se hayan cargado subjects
-    if (store.getSession()) {
-        app.init();
-        authUI.showApp();
-    } else {
-        authUI.showAuth();
-    }
-});
+        // Hidratar la página de detalles si corresponde
+        (async function hydrateSubjectDetailsFromClient() {
+            const m = location.pathname.match(/^\/subject\/([^/]+)\/details\/?$/);
+            if (!m) return;
+            const id = decodeURIComponent(m[1]);
+            const subject = await getSubjectByIdClient(id);
+            const elTitle = document.getElementById("subjectTitle");
+            const elCode = document.getElementById("subjectCode");
+            const elDesc = document.getElementById("subjectDescription");
+            const elCredits = document.getElementById("subjectCredits");
+            const elProfessor = document.getElementById("subjectProfessor");
+            const elSchedule = document.getElementById("subjectSchedule");
+            const elIcon = document.getElementById("subjectIcon");
+
+            if (elTitle) elTitle.textContent = subject.name || subject.title || "";
+            if (elCode && subject.code) elCode.textContent = subject.code;
+            if (elDesc) elDesc.textContent = subject.desc || subject.desc || "";
+            if (elCredits && subject.credits != null) elCredits.textContent = String(subject.credits);
+            if (elProfessor && subject.professor) elProfessor.textContent = subject.professor;
+            if (elSchedule && subject.schedule) elSchedule.textContent = subject.schedule;
+            if (elIcon) {
+                if (subject.icon) {
+                    if (elIcon.tagName === "IMG") elIcon.src = subject.icon;
+                    else elIcon.innerHTML = `<img src="${subject.icon}" alt="Icono ${subject.name}">`;
+                } else {
+                    elIcon.style.display = "none";
+                }
+            }
+
+            if (subject.name) document.title = `${subject.name} — Detalles`;
+        })();
+    })
+    .catch((err) => {
+        console.error(err);
+        // fallback: inicializar UI aunque no se hayan cargado subjects
+        if (store.getSession()) {
+            app.init();
+            authUI.showApp();
+        } else {
+            authUI.showAuth();
+        }
+    });
 
 // Escuchar cambios de theme desde otras pestañas y sincronizar
 window.addEventListener("storage", (e) => {
