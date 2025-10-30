@@ -2,17 +2,24 @@ import bcrypt from 'bcrypt';
 import fs from 'fs';
 
 const USERS_DIR = "data/users/"
+const DEFAULT_COLOR = "#4299F0";
 
 if (!fs.existsSync(USERS_DIR)) {
     fs.mkdirSync(USERS_DIR, { recursive: true })
 }
 
 export default class User {
-    constructor(email, password, name, bio) {
+    constructor(email, password, name, bio, color, favourites) {
         this.email = email
         this.password = password
         this.name = name
         this.bio = bio
+        this.color = color
+        this.favourites = favourites
+    }
+
+    toJson() {
+        return JSON.stringify(this, (key, value) => key === "password" ? undefined : key === "favourites" ? Array.from(value) : value);
     }
 
     getEmail() {
@@ -25,6 +32,19 @@ export default class User {
 
     getBio() {
         return this.bio
+    }
+
+    getColor() {
+        return this.color
+    }
+
+    getFavourites() {
+        return Array.from(this.favourites);
+    }
+
+    setFavourites(favourites) {
+        this.favourites = new Set(favourites);
+        this.saveToFile();
     }
 
     setName(name) {
@@ -42,14 +62,17 @@ export default class User {
         this.saveToFile();
     } 
 
+    setColor(color) {
+        this.color = color;
+        this.saveToFile();
+    }
+
     static register(email, password, name, bio) {
         if (fs.existsSync(USERS_DIR + email)) {
             return 11;
         }
-        const o = new User(email);
-        o.setName(name);
-        o.setPassword(bcrypt.hashSync(password,10));
-        o.setBio(bio);
+        const hashedPassword = bcrypt.hashSync(password,10)
+        const o = new User(email, hashedPassword, name, bio, DEFAULT_COLOR, new Set());
         o.saveToFile();
         return o;
     }
@@ -68,6 +91,7 @@ export default class User {
     }
 
     saveToFile() {
+        this.favourites = Array.from(this.favourites);
         fs.writeFileSync(USERS_DIR + this.email, JSON.stringify(this));
     }
 
@@ -76,6 +100,6 @@ export default class User {
             return 1
         }
         const json = JSON.parse(fs.readFileSync(USERS_DIR + email));
-        return new User(json.email, json.password, json.name, json.bio);
+        return new User(json.email, json.password, json.name, json.bio, json.color, new Set(json.favourites));
     }
 }

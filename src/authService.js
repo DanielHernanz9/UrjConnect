@@ -1,7 +1,7 @@
 import User from './User.js'
 import { randomBytes } from 'crypto';
 
-const sessions = {};
+const sessions = new Map();
 
 export function login(email, password) {
     const user = User.login(email, password);
@@ -9,7 +9,7 @@ export function login(email, password) {
         return user;
     }
     const token = generateRandomToken();
-    sessions[token] = user;
+    sessions.set(token, user);
     return token;
 }
 
@@ -19,12 +19,12 @@ export function register(email, password, name, bio) {
         return user;
     }
     const token = generateRandomToken()
-    sessions[token] = user;
+    sessions.set(token, user);
     return token;
 }
 
 export function authenticate(token) {
-    return sessions[token];
+    return sessions.get(token);
 }
 
 function generateRandomToken() {
@@ -32,5 +32,5 @@ function generateRandomToken() {
 }
 
 export function logout(token) {
-    delete sessions[token];
+    sessions.delete(token);
 }

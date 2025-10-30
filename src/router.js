@@ -1,4 +1,4 @@
-import express from "express";
+import express, { json } from "express";
 import * as auth from "./authService.js";
 
 const router = express.Router();
@@ -26,6 +26,7 @@ function withAuth(req, res, next) {
             req.user = user;
             return next();
         }
+        res.clearCookie("session_id", COOKIEOPTIONSDELETE);
     }
     return res.redirect("/");
 }
@@ -34,7 +35,7 @@ router.get("/", (req, res) => {
     if (req.cookies && req.cookies.session_id) {
         const user = auth.authenticate(req.cookies.session_id);
         if (user) {
-            const jsonUser = JSON.stringify(user);
+            const jsonUser = user.toJson();
             res.render("index", { jsonUser });
             return;
         }
@@ -54,13 +55,8 @@ router.post("/login", (req, res) => {
         });
     } else {
         res.cookie("session_id", session_id, COOKIEOPTIONS);
-        const user = auth.authenticate(session_id);
-        res.json({
-            code: 0,
-            email: user.getEmail(),
-            name: user.getName(),
-            bio: user.getBio(),
-        });
+        const user = auth.authenticate(session_id).toJson();
+        res.json({ code: 0, user });
     }
 });
 
@@ -72,32 +68,28 @@ router.post("/register", (req, res) => {
         });
     } else {
         res.cookie("session_id", session_id, COOKIEOPTIONS);
-        const user = auth.authenticate(session_id);
-        res.json({
-            code: 0,
-            email: user.getEmail(),
-            name: user.getName(),
-            bio: user.getBio(),
-        });
+        const user = auth.authenticate(session_id).toJson();
+        res.json({ code: 0, user });
     }
 });
 
-router.post("/updateUser", (req, res) => {
-    if (req.cookies && req.cookies.session_id) {
-        const user = auth.authenticate(req.cookies.session_id);
-        if (user) {
-            if (req.body.name) {
-                user.setName(req.body.name);
-            }
-            if ("bio" in req.body) {
-                user.setBio(req.body.bio);
-            }
-            res.json({ code: 0 });
-            return;
-        }
+router.post("/updateUser", withAuth, (req, res) => {
+    const user = req.user;
+    if (req.body.name) {
+        user.setName(req.body.name);
     }
-    res.json({ code: 21 });
+    if ("bio" in req.body) {
+        user.setBio(req.body.bio);
+    }
+    if ("color" in req.body) {
+        user.setColor(req.body.color);
+    }
 });
+
+router.post("/updateFavourites", withAuth, (req, res) => {
+    const user = req.user;
+    user.setFavourites(req.body.favourites);
+})
 
 router.post("/logout", (req, res) => {
     if (req.cookies && req.cookies.session_id) {

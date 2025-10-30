@@ -40,7 +40,6 @@ const ERROR_MESSAGES = {
     1: "No existe ninguna cuenta con ese email.",
     2: "Contraseña incorrecta.",
     11: "Ya existe una cuenta con ese email.",
-    21: "Sesión caducada",
 };
 
 // HSL (antiguo) -> HEX (para compatibilidad)
@@ -93,7 +92,7 @@ const store = {
         return JSON.parse(sessionStorage.getItem("session") || "null");
     },
     setSession(user) {
-        sessionStorage.setItem("session", JSON.stringify(user));
+        sessionStorage.setItem("session", user);
     },
     clearSession() {
         sessionStorage.removeItem("session");
@@ -105,16 +104,20 @@ const store = {
         return localStorage.getItem("theme") || "dark";
     },
     getFavourites() {
-        return JSON.parse(localStorage.getItem("favourites") || "[]");
+        return this.getSession().favourites;
     },
     setFavourites(favourites) {
-        localStorage.setItem("favourites", JSON.stringify(favourites));
+        const user = this.getSession();
+        user.favourites = favourites;
+        this.setSession(JSON.stringify(user));
     },
     setColor(color) {
-        localStorage.setItem("color", color);
+        const user = this.getSession();
+        user.color = color;
+        this.setSession(JSON.stringify(user));
     },
     getColor() {
-        return localStorage.getItem("color") || hslToHex(210, 85, 60);
+        return this.getSession().color;
     },
 };
 
@@ -124,7 +127,7 @@ try {
         const raw = el.textContent.trim();
         if (raw) {
             const u = JSON.parse(raw);
-            if (u) store.setSession(u);
+            if (u) store.setSession(raw);
         }
     }
 } catch (e) {}
@@ -213,11 +216,7 @@ if (authUI.loginForm)
                 authUI.loginError.textContent = ERROR_MESSAGES[data.code];
                 return;
             }
-            store.setSession({
-                name: data.name,
-                email: data.email,
-                bio: data.bio,
-            });
+            store.setSession(data.user);
         } catch (err) {
             console.log(err);
             authUI.loginError.textContent = "Error al conectar con el servidor.";
@@ -267,11 +266,7 @@ if (authUI.registerForm)
                 authUI.loginError.textContent = ERROR_MESSAGES[data.code];
                 return;
             }
-            store.setSession({
-                name: data.name,
-                email: data.email,
-                bio: data.bio,
-            });
+            store.setSession(data.user);
         } catch (err) {
             console.log(err);
             authUI.loginError.textContent = "Error al conectar con el servidor.";
@@ -354,6 +349,15 @@ const app = {
         const favs = new Set(store.getFavourites());
         favs.has(id) ? favs.delete(id) : favs.add(id);
         store.setFavourites(Array.from(favs));
+        fetch("/updateFavourites", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                favourites: Array.from(favs)
+            })
+        });
         this.renderFavDropdown();
         this.renderChips();
         this.renderCards();
@@ -476,28 +480,10 @@ const app = {
                 body: JSON.stringify({
                     name: this.user.name,
                     bio: this.user.bio,
+                    color: this.user.color
                 }),
             });
-            const data = await response.json();
-            if (data.code === 21) {
-                store.clearSession();
-                toast("Sesión caducada");
-                store.clearSession();
-                try {
-                    const response = await fetch("/logout", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                    });
-                } catch (err) {
-                    console.log(err);
-                    authUI.loginError.textContent = "Error al conectar con el servidor.";
-                    return;
-                }
-                setTimeout(() => location.reload(), 400);
-                return;
-            }
+            await response.json();
         } catch (err) {
             console.log(err);
             authUI.loginError.textContent = "Error al conectar con el servidor.";
@@ -536,6 +522,7 @@ const app = {
             const avatarColor = this.el.p_color.value;
             this.user.name = name;
             this.user.bio = bio;
+            this.user.color = avatarColor;
             this.updateUser();
             store.setColor(avatarColor);
             //this.saveUser({ name, bio, avatarColor }); // guardamos hex
