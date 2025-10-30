@@ -121,6 +121,9 @@ const store = {
     },
 };
 
+// limpiar por si hay residuos de otra vez
+store.clearSession();
+
 try {
     const el = document.getElementById("__initialUser");
     if (el) {
