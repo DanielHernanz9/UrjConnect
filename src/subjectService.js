@@ -1,9 +1,33 @@
+import fs from 'fs';
 const SUBJECTS_DIR = "data/users/"
 
 const SUBJECTS = new Map();
 
+function loadSubject(id) {
+    return JSON.parse(fs.readFileSync(SUBJECTS_DIR + id + ".json"));
+}
+
+function saveSubject(subject) {
+    fs.writeFileSync(SUBJECTS_DIR + id + ".json", JSON.stringify(subject));
+}
+
+function removeSubjectFile(id) {
+    fs.rmSync(SUBJECTS_DIR + id + ".json");
+}
+
 if (fs.existsSync(SUBJECTS_DIR)) {
-    // cargar de disco
+    fs.readdir(SUBJECTS_DIR, (err, files) => {
+    if (err) {
+        console.error("Error reading folder:", err);
+        return;
+    }
+
+    files.forEach(file => {
+        const subject = loadSubject(file)
+        SUBJECTS.put(subject.id, subject);
+  });
+});
+
 } else {
     fs.mkdirSync(SUBJECTS_DIR, { recursive: true })
     [
@@ -136,18 +160,23 @@ export function addSubject(subject) {
     if (SUBJECTS.subject.id) {
         return 21;
     }
-    SUBJECTS.set(subject.id, subject)
+    SUBJECTS.set(subject.id, subject);
+    saveSubject(subject);
     return 0;
 }
 
 export function deleteSubject(id) {
     SUBJECTS.delete(id);
+    removeSubjectFile(id);
 }
 
 export function modifySubject(id, subject) {
     if (!SUBJECTS.id) {
         return 22;
     }
-    deleteSubject(id);
+    if (id != subject.id) {
+        deleteSubject(id);
+    }
     SUBJECTS.set(subject.id, subject);
+    saveSubject(subject);
 }
