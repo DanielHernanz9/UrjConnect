@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es" data-theme="dark">
     <head>
         <meta charset="utf-8" />
@@ -6,7 +7,6 @@
         <title>URJConnect — Foros</title>
         <meta name="description" content="URJConnect • Foros de asignaturas con registro/login, favoritos y perfil. Single-file, super moderno." />
         <link href="css/styles.css" rel="stylesheet" />
-
         <link rel="icon" type="image/png" href="assets/logo.png" />
     </head>
     <body>
@@ -21,14 +21,12 @@
                         </div>
                         <h1 class="wordmark">URJConnect</h1>
                     </div>
-
                     <section class="auth-card glass" aria-live="polite">
                         <div class="switch" role="tablist" aria-label="Cambiar entre iniciar sesión y crear cuenta">
                             <div class="pill" id="switchPill"></div>
                             <button class="active" id="btnLoginTab" role="tab" aria-selected="true" aria-controls="loginPanel">Iniciar sesión</button>
                             <button id="btnRegisterTab" role="tab" aria-selected="false" aria-controls="registerPanel">Crear cuenta</button>
                         </div>
-
                         <div class="forms" id="formsWrap">
                             <!-- LOGIN -->
                             <form id="loginForm" class="active" aria-labelledby="btnLoginTab">
@@ -45,7 +43,6 @@
                                 </div>
                                 <div class="error" id="loginError" role="alert" aria-live="assertive"></div>
                             </form>
-
                             <!-- REGISTER -->
                             <form id="registerForm" aria-labelledby="btnRegisterTab">
                                 <div class="row">
@@ -91,7 +88,6 @@
                         </div>
                         <div class="brand-wordmark" aria-label="URJConnect">URJConnect</div>
                     </div>
-
                     <div class="search">
                         <div class="field" style="display: flex; align-items: center; gap: 8px">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -100,13 +96,9 @@
                             <input id="searchInput" type="search" placeholder="Buscar asignaturas..." />
                         </div>
                     </div>
-
                     <div class="toolbar">
-                        <!-- Navbar favorites removed (we use per-card stars and a filter button above the forums) -->
-
                         <button class="icon-btn" id="themeToggle" title="Cambiar tema">🌓 Tema</button>
                         <div class="divider"></div>
-
                         <div class="profile">
                             <button class="profile-btn" id="profileButton" aria-expanded="false" aria-controls="profileMenu">
                                 <div class="avatar" id="avatar">
@@ -121,7 +113,6 @@
                         </div>
                     </div>
                 </header>
-
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: 1200px" class="chips">
                     <div style="display: flex; gap: 8px; align-items: center">
                         <button class="icon-btn" id="filterFavsBtn" aria-pressed="false">
@@ -131,31 +122,84 @@
                     </div>
                     <div style="flex: 1"></div>
                 </div>
-
                 <div class="chips" id="chipsRow" aria-label="Favoritos anclados"></div>
-
                 <section class="grid container" id="cardsGrid" aria-live="polite"></section>
             </section>
         </main>
-
-        <!-- ============ MODALS ============ -->
         <div class="modal" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
             <div class="content glass">
                 <div class="body">
                     <h3 id="profileTitle" style="margin: 0 0 8px 0">Editar perfil</h3>
                     <small class="hint">Actualiza tu nombre, color de avatar y una breve bio.</small>
-
                     <div class="field" style="margin-top: 12px">
                         <label for="p_name">Nombre</label>
                         <input id="p_name" type="text" placeholder="Tu nombre" style="width: 100%; max-width: 420px" />
                     </div>
-
                     <div class="field" style="margin-top: 10px">
                         <label for="p_color">Color del avatar</label>
                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px">
                             <div class="swatches" id="p_swatches" aria-hidden="true"></div>
                             <input id="p_color" type="color" value="#6366f1" aria-label="Color personalizado" />
                         </div>
+                        <small class="hint">Elige un color para tu avatar o usa uno de los swatches.</small>
+                    </div>
+                    <div class="field">
+                        <label for="p_bio">Bio</label>
+                        <textarea id="p_bio" rows="3" placeholder="Cuéntanos algo breve sobre ti..."></textarea>
+                    </div>
+                    <div class="actions" style="justify-content: flex-end">
+                        <button class="btn" id="saveProfile">Guardar cambios</button>
+                        <button class="btn secondary" data-close="#profileModal">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal" id="forumModal" role="dialog" aria-modal="true" aria-labelledby="forumTitle">
+            <div class="content glass">
+                <div class="head">
+                    <h3 id="forumTitle">Foro</h3>
+                    <button class="close" data-close="#forumModal">Cerrar</button>
+                </div>
+                <div class="body">
+                    <div class="posts" id="posts"></div>
+                    <div class="row">
+                        <div class="field">
+                            <label for="newPost">Nuevo mensaje</label>
+                            <textarea id="newPost" rows="3" placeholder="Comparte una duda, recurso o idea..."></textarea>
+                        </div>
+                        <div style="display: flex; align-items: flex-end">
+                            <button class="btn" id="sendPost">Publicar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+        <template id="cardTemplate">
+            <article class="card" tabindex="0">
+                <div class="spark" aria-hidden="true"></div>
+                <div class="card-head">
+                    <div class="subject">
+                        <div class="ico" data-bg></div>
+                        <div class="title" data-title style="font-size: 16px"></div>
+                    </div>
+                    <button class="fav-toggle" title="Marcar como favorito" data-fav>☆</button>
+                </div>
+                <p data-desc></p>
+                <div class="cta">
+                    <button type="button" class="link" data-details>Detalles</button>
+                    <button class="enter" data-enter>Entrar al foro</button>
+                </div>
+            </article>
+        </template>
+        {{#jsonUser}}
+        <script id="__initialUser" type="application/json">
+            {{{jsonUser}}}
+        </script>
+        {{/jsonUser}}
+        <script src="/app.js"></script>
+    </body>
+</html>
                         <small class="hint">Elige un color para tu avatar o usa uno de los swatches.</small>
                     </div>
                     <div class="field">
@@ -217,21 +261,5 @@
         </script>
         {{/jsonUser}}
         <script src="/app.js"></script>
-        <script>
-            // Sincronizar tema entre pestañas/páginas: leer al cargar y escuchar storage
-            (function () {
-                const apply = (t) => {
-                    if (t) document.documentElement.setAttribute("data-theme", t);
-                };
-                // Apply saved theme immediately
-                try {
-                    apply(localStorage.getItem("theme") || "dark");
-                } catch (e) {}
-                // Listen for changes from other tabs
-                window.addEventListener("storage", (e) => {
-                    if (e.key === "theme") apply(e.newValue || "dark");
-                });
-            })();
-        </script>
     </body>
 </html>
