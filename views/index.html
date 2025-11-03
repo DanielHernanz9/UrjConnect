@@ -12,75 +12,7 @@
     <body>
         <div class="aurora" aria-hidden="true"></div>
         <main>
-            <!-- ============ AUTH  ============ -->
-            <section id="auth" aria-label="Acceso">
-                <div class="auth-shell">
-                    <div class="auth-brand" aria-label="Marca">
-                        <div class="logo" aria-hidden="true">
-                            <img src="/assets/logo.png" alt="Logo URJConnect" style="width: 100%; height: 100%; object-fit: contain" />
-                        </div>
-                        <h1 class="wordmark">URJConnect</h1>
-                    </div>
-
-                    <section class="auth-card glass" aria-live="polite">
-                        <div class="switch" role="tablist" aria-label="Cambiar entre iniciar sesión y crear cuenta">
-                            <div class="pill" id="switchPill"></div>
-                            <button class="active" id="btnLoginTab" role="tab" aria-selected="true" aria-controls="loginPanel">Iniciar sesión</button>
-                            <button id="btnRegisterTab" role="tab" aria-selected="false" aria-controls="registerPanel">Crear cuenta</button>
-                        </div>
-
-                        <div class="forms" id="formsWrap">
-                            <!-- LOGIN -->
-                            <form id="loginForm" class="active" aria-labelledby="btnLoginTab">
-                                <div class="field">
-                                    <label for="li_email">Email</label>
-                                    <input id="li_email" name="email" type="email" autocomplete="username" placeholder="tucorreo@ejemplo.com" required />
-                                </div>
-                                <div class="field">
-                                    <label for="li_pass">Contraseña</label>
-                                    <input id="li_pass" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required />
-                                </div>
-                                <div class="actions">
-                                    <button class="btn" type="submit">Entrar</button>
-                                </div>
-                                <div class="error" id="loginError" role="alert" aria-live="assertive"></div>
-                            </form>
-
-                            <!-- REGISTER -->
-                            <form id="registerForm" aria-labelledby="btnRegisterTab">
-                                <div class="row">
-                                    <div class="field">
-                                        <label for="r_name">Nombre</label>
-                                        <input id="r_name" name="name" type="text" placeholder="Tu nombre" required />
-                                    </div>
-                                    <div class="field">
-                                        <label for="r_email">Email</label>
-                                        <input id="r_email" name="email" type="email" placeholder="tucorreo@ejemplo.com" required />
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="field">
-                                        <label for="r_pass">Contraseña</label>
-                                        <input id="r_pass" name="password" type="password" placeholder="Mín. 6 caracteres" minlength="6" required />
-                                    </div>
-                                    <div class="field">
-                                        <label for="r_pass2">Repetir contraseña</label>
-                                        <input id="r_pass2" name="password2" type="password" placeholder="Repite la contraseña" minlength="6" required />
-                                    </div>
-                                </div>
-                                <div class="field">
-                                    <label for="r_bio">Bio (opcional)</label>
-                                    <textarea id="r_bio" name="bio" rows="2" placeholder="Cuéntanos algo breve sobre ti..."></textarea>
-                                </div>
-                                <div class="actions">
-                                    <button class="btn" type="submit">Crear cuenta</button>
-                                </div>
-                                <div class="error" id="registerError" role="alert" aria-live="assertive"></div>
-                            </form>
-                        </div>
-                    </section>
-                </div>
-            </section>
+            
 
             <!-- ============ APP ============ -->
             <section id="app">
