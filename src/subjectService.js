@@ -1,5 +1,5 @@
 import fs from 'fs';
-const SUBJECTS_DIR = "data/users/"
+const SUBJECTS_DIR = "data/subjects/"
 
 const SUBJECTS = new Map();
 
@@ -8,7 +8,7 @@ function loadSubject(id) {
 }
 
 function saveSubject(subject) {
-    fs.writeFileSync(SUBJECTS_DIR + id + ".json", JSON.stringify(subject));
+    fs.writeFileSync(SUBJECTS_DIR + subject.id + ".json", JSON.stringify(subject));
 }
 
 function removeSubjectFile(id) {
@@ -17,20 +17,19 @@ function removeSubjectFile(id) {
 
 if (fs.existsSync(SUBJECTS_DIR)) {
     fs.readdir(SUBJECTS_DIR, (err, files) => {
-    if (err) {
-        console.error("Error reading folder:", err);
-        return;
-    }
+        if (err) {
+            console.error("Error reading folder:", err);
+            return;
+        }
 
-    files.forEach(file => {
-        const subject = loadSubject(file)
-        SUBJECTS.put(subject.id, subject);
-  });
-});
-
+        files.forEach(file => {
+            const subject = loadSubject(file)
+            SUBJECTS.put(subject.id, subject);
+        });
+    });
 } else {
     fs.mkdirSync(SUBJECTS_DIR, { recursive: true })
-    [
+    const s = [
         {
             id: "matematicas",
             name: "Matemáticas",
@@ -143,7 +142,8 @@ if (fs.existsSync(SUBJECTS_DIR)) {
             color: "linear-gradient(135deg,#ec4899,#6366f1)",
             icon: "/assets/informatica.png",
         }
-    ].forEach(element => {
+    ]
+    s.forEach(element => {
         addSubject(element)
     });
 }
@@ -157,7 +157,7 @@ export function getArray() {
 }
 
 export function addSubject(subject) {
-    if (SUBJECTS.subject.id) {
+    if (SUBJECTS.get(subject.id)) {
         return 21;
     }
     SUBJECTS.set(subject.id, subject);
