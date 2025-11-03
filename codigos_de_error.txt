@@ -5,5 +5,7 @@ Login:
 Register:    
     11: Usuario ya existe
 
-Auth:
-    21: cookie invalida
+Subjects:
+    20: subject no añadida a la petición
+    21: subject ya existe
+    22: subject no existe
