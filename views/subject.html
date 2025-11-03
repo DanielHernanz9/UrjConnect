@@ -60,26 +60,11 @@
                 </div>
 
                 <div class="cta" style="margin-top: 18px; display: flex; gap: 8px">
-                    <button class="link" id="backBtn">Volver</button>
+                    <button class="link" id="backBtn" onclick="window.location.href=`/`">Volver</button>
                     <button class="enter" data-enter id="enterForum">Entrar al foro</button>
                 </div>
             </section>
         </main>
-        <script>
-            document.getElementById("themeToggle")?.addEventListener("click", () => {
-                const theme = localStorage.getItem("theme") || "dark";
-                const next = theme === "dark" ? "light" : "dark";
-                localStorage.setItem("theme", next);
-                document.documentElement.setAttribute("data-theme", next);
-            });
-        </script>
-
-        <script>
-            // Cuando se pulse Entrar, redirigimos al index (la app cliente puede reaccionar si procede)
-            document.getElementById("enterForum")?.addEventListener("click", () => {
-                window.location.href = "/";
-            });
-        </script>
 
         <!-- Modal de editar perfil -->
         <div class="modal" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
@@ -124,128 +109,5 @@
         {{/jsonUser}}
 
         <script src="/app.js"></script>
-
-        <script>
-            // Initialize everything when DOM is ready
-            document.addEventListener("DOMContentLoaded", () => {
-                // Theme handling
-                const toggleTheme = document.getElementById("themeToggle");
-                if (toggleTheme) {
-                    toggleTheme.addEventListener("click", () => {
-                        const currentTheme = document.documentElement.getAttribute("data-theme");
-                        const newTheme = currentTheme === "light" ? "dark" : "light";
-                        document.documentElement.setAttribute("data-theme", newTheme);
-                        localStorage.setItem("theme", newTheme);
-                    });
-                }
-
-                // Back button handler
-                const backBtn = document.getElementById("backBtn");
-                if (backBtn) {
-                    backBtn.addEventListener("click", () => {
-                        window.location.href = "/";
-                    });
-                }
-
-                // Theme sync between tabs
-                window.addEventListener("storage", (e) => {
-                    if (e.key === "theme") {
-                        document.documentElement.setAttribute("data-theme", e.newValue || "dark");
-                    }
-                });
-
-                // Forum entry redirect
-                document.getElementById("enterForum")?.addEventListener("click", () => {
-                    window.location.href = "/";
-                });
-
-                // Profile Modal
-                const modal = document.getElementById("profileModal");
-                const profileBtn = document.getElementById("btnEditProfile");
-                const toast = document.getElementById("toast");
-                const swatches = document.getElementById("p_swatches");
-                const nameInput = document.getElementById("p_name");
-                const colorInput = document.getElementById("p_color");
-                const bioInput = document.getElementById("p_bio");
-
-                // Create color swatches
-                const colors = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#14b8a6"];
-                colors.forEach((color) => {
-                    const swatch = document.createElement("button");
-                    swatch.classList.add("swatch");
-                    swatch.style.backgroundColor = color;
-                    swatch.setAttribute("aria-label", `Elegir color ${color}`);
-                    swatch.addEventListener("click", () => (colorInput.value = color));
-                    swatches.appendChild(swatch);
-                });
-
-                // Load user data
-                try {
-                    const userScript = document.getElementById("__initialUser");
-                    if (userScript) {
-                        const userData = JSON.parse(userScript.textContent);
-                        if (userData) {
-                            nameInput.value = userData.name || "";
-                            colorInput.value = userData.avatarColor || "#6366f1";
-                            bioInput.value = userData.bio || "";
-                        }
-                    }
-                } catch (e) {
-                    console.error("Error loading user data:", e);
-                }
-
-                // Open profile modal
-                profileBtn?.addEventListener("click", () => {
-                    modal.classList.add("show");
-                });
-
-                // Close modal handler
-                document.querySelectorAll("[data-close]").forEach((btn) => {
-                    btn.addEventListener("click", () => {
-                        const target = document.querySelector(btn.dataset.close);
-                        if (target) target.classList.remove("show");
-                    });
-                });
-
-                // Save profile
-                document.getElementById("saveProfile")?.addEventListener("click", async () => {
-                    try {
-                        const res = await fetch("/api/profile", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                name: nameInput.value,
-                                avatarColor: colorInput.value,
-                                bio: bioInput.value,
-                            }),
-                        });
-
-                        if (!res.ok) throw new Error("Error al guardar el perfil");
-
-                        // Show success message
-                        toast.textContent = "Perfil actualizado correctamente";
-                        toast.classList.add("show");
-                        setTimeout(() => toast.classList.remove("show"), 3000);
-
-                        // Close modal
-                        modal.classList.remove("show");
-
-                        // Update profile display
-                        if (window.updateUserDisplay) {
-                            window.updateUserDisplay({
-                                name: nameInput.value,
-                                avatarColor: colorInput.value,
-                                bio: bioInput.value,
-                            });
-                        }
-                    } catch (err) {
-                        console.error(err);
-                        toast.textContent = err.message;
-                        toast.classList.add("show", "error");
-                        setTimeout(() => toast.classList.remove("show", "error"), 3000);
-                    }
-                });
-            });
-        </script>
     </body>
 </html>
