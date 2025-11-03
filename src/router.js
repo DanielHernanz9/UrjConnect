@@ -38,7 +38,7 @@ function withAdmin(req, res, next) {
         if (user) {
             if (!user.isRole("admin")) {
                 return res.status(403).json({
-                    error: { code: 'FORBIDDEN', message: 'No tienes permisos para realizar esta acción.' }
+                    error: { code: "FORBIDDEN", message: "No tienes permisos para realizar esta acción." },
                 });
             }
             req.user = user;
@@ -107,7 +107,7 @@ router.post("/updateUser", withAuth, (req, res) => {
 router.post("/updateFavourites", withAuth, (req, res) => {
     const user = req.user;
     user.setFavourites(req.body.favourites);
-})
+});
 
 router.post("/logout", (req, res) => {
     if (req.cookies && req.cookies.session_id) {
@@ -151,7 +151,7 @@ router.get("/subject/:id/details", withAuth, (req, res) => {
     const id = req.params.id;
     // obtener la asignatura completa (description y demás atributos)
     const subject = getSubjectById(id);
-    const jsonUser = JSON.stringify({ name: req.user.getName(), email: req.user.getEmail(), bio: req.user.getBio() });
+    const jsonUser = JSON.stringify({ name: req.user.getName(), email: req.user.getEmail(), bio: req.user.getBio(), color: req.user.getColor() });
     // pasar el objeto subject completo a la plantilla
     res.render("subject", { subject, jsonUser });
 });
