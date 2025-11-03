@@ -31,6 +31,23 @@ function withAuth(req, res, next) {
     return res.redirect("/");
 }
 
+function withAdmin(req, res, next) {
+    if (req.cookies && req.cookies.session_id) {
+        const user = auth.authenticate(req.cookies.session_id);
+        if (user) {
+            if (!user.isRole("admin")) {
+                return res.status(403).json({
+                    error: { code: 'FORBIDDEN', message: 'No tienes permisos para realizar esta acción.' }
+                });
+            }
+            req.user = user;
+            return next();
+        }
+        res.clearCookie("session_id", COOKIEOPTIONSDELETE);
+    }
+    return res.redirect("/");
+}
+
 router.get("/", (req, res) => {
     if (req.cookies && req.cookies.session_id) {
         const user = auth.authenticate(req.cookies.session_id);

@@ -9,14 +9,14 @@ if (!fs.existsSync(USERS_DIR)) {
 }
 
 export default class User {
-    constructor(email, password, name, bio, color, favourites) {
+    constructor(email, password, name, bio, color, favourites, role) {
         this.email = email
         this.password = password
         this.name = name
         this.bio = bio
         this.color = color
         this.favourites = favourites
-        this.role = "user"
+        this.role = role
     }
 
     isRole(role) {
@@ -77,7 +77,7 @@ export default class User {
             return 11;
         }
         const hashedPassword = bcrypt.hashSync(password,10)
-        const o = new User(email, hashedPassword, name, bio, DEFAULT_COLOR, new Set());
+        const o = new User(email, hashedPassword, name, bio, DEFAULT_COLOR, new Set(), "user");
         o.saveToFile();
         return o;
     }
@@ -105,6 +105,6 @@ export default class User {
             return 1
         }
         const json = JSON.parse(fs.readFileSync(USERS_DIR + email));
-        return new User(json.email, json.password, json.name, json.bio, json.color, new Set(json.favourites));
+        return new User(json.email, json.password, json.name, json.bio, json.color, new Set(json.favourites), json.role);
     }
 }
