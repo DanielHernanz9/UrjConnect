@@ -1,12 +1,12 @@
 import bcrypt from 'bcrypt';
 import fs from 'fs';
 
-const USERS_DIR = "data/users/"
-const DEFAULT_COLOR = "#4299F0";
-
 if (!fs.existsSync(USERS_DIR)) {
     fs.mkdirSync(USERS_DIR, { recursive: true })
 }
+
+const USERS_DIR = "data/users/"
+const DEFAULT_COLOR = "#4299F0";
 
 export default class User {
     constructor(email, password, name, bio, color, favourites) {
@@ -16,6 +16,11 @@ export default class User {
         this.bio = bio
         this.color = color
         this.favourites = favourites
+        this.role = "user"
+    }
+
+    isRole(role) {
+        return this.role === role
     }
 
     toJson() {
