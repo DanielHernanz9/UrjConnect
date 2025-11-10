@@ -191,6 +191,7 @@ router.post("/createSubject", withAdmin, (req, res) => {
         // autogenerar id, code y title
         const id = subjects.generateId(body.name);
         const code = subjects.generateCode(body.name);
+        const credits = Math.max(0, Number(body.credits ?? 0) || 0);
         const subject = {
             id,
             name: body.name,
@@ -198,7 +199,7 @@ router.post("/createSubject", withAdmin, (req, res) => {
             title: body.name,
             desc: body.desc || "",
             description: body.description || "",
-            credits: body.credits ?? 0,
+            credits,
             professor: body.professor || "",
             schedule: body.schedule || "",
             color: body.color || "",
@@ -215,7 +216,12 @@ router.post("/createSubject", withAdmin, (req, res) => {
 router.post("/subject/:id/modify", withAdmin, (req, res) => {
     let code;
     if (req.body.subject) {
-        code = subjects.modifySubject(req.body.subject);
+        const incoming = req.body.subject;
+        // Normalizar créditos >= 0
+        if (incoming) {
+            incoming.credits = Math.max(0, Number(incoming.credits ?? 0) || 0);
+        }
+        code = subjects.modifySubject(incoming);
     } else {
         code = 20;
     }

@@ -649,7 +649,7 @@ const app = {
                     name,
                     desc: (this.el.cs_desc?.value || "").trim(),
                     description: (this.el.cs_long?.value || "").trim(),
-                    credits: Number(this.el.cs_credits?.value || 0),
+                    credits: Math.max(0, Number(this.el.cs_credits?.value || 0) || 0),
                     professor: (this.el.cs_prof?.value || "").trim(),
                     schedule: (this.el.cs_sched?.value || "").trim(),
                     color: (this.el.cs_color?.value || "").trim(),
