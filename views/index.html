@@ -181,21 +181,11 @@
             <div class="content glass">
                 <div class="head" style="display: flex; justify-content: space-between; align-items: center; gap: 12px">
                     <h3 id="createSubjectTitle" style="margin: 0">Crear nueva asignatura</h3>
-                    <button class="close" data-close="#createSubjectModal">Cerrar</button>
                 </div>
                 <div class="body" style="display: flex; flex-direction: column; gap: 12px">
                     <div class="field">
-                        <label for="cs_id">ID (slug único)</label>
-                        <input id="cs_id" type="text" placeholder="p.ej. algebra2" required />
-                        <small class="hint">Sin espacios, se usará en la URL.</small>
-                    </div>
-                    <div class="field">
                         <label for="cs_name">Nombre</label>
                         <input id="cs_name" type="text" placeholder="Nombre visible" required />
-                    </div>
-                    <div class="field">
-                        <label for="cs_code">Código</label>
-                        <input id="cs_code" type="text" placeholder="Código interno (opcional)" />
                     </div>
                     <div class="field">
                         <label for="cs_desc">Descripción corta</label>
@@ -220,13 +210,17 @@
                         <input id="cs_sched" type="text" placeholder="Lunes 10:00-12:00" />
                     </div>
                     <div class="field">
-                        <label for="cs_color">Color (CSS)</label>
-                        <input id="cs_color" type="text" placeholder="linear-gradient(135deg,#6366f1,#06b6d4)" />
-                        <small class="hint">Puede ser un color HEX o gradient.</small>
+                        <label>Color</label>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px">
+                            <div class="swatches" id="cs_swatches" aria-hidden="true"></div>
+                            <input id="cs_color" type="color" value="#6366f1" aria-label="Color personalizado" />
+                        </div>
+                        <small class="hint">Elige uno de los colores o usa el selector.</small>
                     </div>
                     <div class="field">
-                        <label for="cs_icon">Icono (ruta)</label>
-                        <input id="cs_icon" type="text" placeholder="/assets/mates.png" />
+                        <label for="cs_iconFile">Icono (subir imagen)</label>
+                        <input id="cs_iconFile" type="file" accept="image/*" />
+                        <small class="hint">Se guardará en /assets y se asignará automáticamente.</small>
                     </div>
                     <div class="actions" style="justify-content: flex-end; gap: 8px">
                         <button class="btn secondary" data-close="#createSubjectModal">Cancelar</button>

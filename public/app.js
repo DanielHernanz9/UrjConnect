@@ -306,16 +306,16 @@ const app = {
         // admin create subject
         btnOpenCreateSubject: $("#btnOpenCreateSubject"),
         createSubjectModal: $("#createSubjectModal"),
-        cs_id: $("#cs_id"),
+        // Campos crear asignatura (ya no se introduce id ni código manualmente)
         cs_name: $("#cs_name"),
-        cs_code: $("#cs_code"),
         cs_desc: $("#cs_desc"),
         cs_long: $("#cs_long"),
         cs_credits: $("#cs_credits"),
         cs_prof: $("#cs_prof"),
         cs_sched: $("#cs_sched"),
         cs_color: $("#cs_color"),
-        cs_icon: $("#cs_icon"),
+        cs_iconFile: $("#cs_iconFile"),
+        cs_swatches: $("#cs_swatches"),
         cs_save: $("#btnCreateSubject"),
         cs_error: $("#createSubjectError"),
 
@@ -608,6 +608,10 @@ const app = {
         if (this.el.btnOpenCreateSubject) {
             this.el.btnOpenCreateSubject.addEventListener("click", () => {
                 if (this.user?.role !== "admin") return; // safety
+                // Renderizar swatches cada vez (por si tema cambia)
+                this.renderCreateSubjectSwatches();
+                // Valor por defecto
+                if (this.el.cs_color) this.el.cs_color.value = PRESET_COLORS[0];
                 modals.open("#createSubjectModal");
             });
         }
@@ -615,24 +619,41 @@ const app = {
         if (this.el.cs_save) {
             this.el.cs_save.addEventListener("click", async () => {
                 if (this.user?.role !== "admin") return;
-                const id = (this.el.cs_id?.value || "").trim();
                 const name = (this.el.cs_name?.value || "").trim();
-                if (!id || !name) {
-                    if (this.el.cs_error) this.el.cs_error.textContent = "ID y Nombre son obligatorios";
+                if (!name) {
+                    if (this.el.cs_error) this.el.cs_error.textContent = "El nombre es obligatorio";
                     return;
                 }
+                // Subir icono si hay archivo
+                let iconPath = "";
+                try {
+                    const file = this.el.cs_iconFile?.files?.[0];
+                    if (file) {
+                        const fd = new FormData();
+                        fd.append("icon", file);
+                        const up = await fetch("/uploadIcon", { method: "POST", body: fd });
+                        if (!up.ok) {
+                            if (this.el.cs_error) this.el.cs_error.textContent = "Error subiendo icono";
+                            return;
+                        }
+                        const upData = await up.json().catch(() => ({}));
+                        iconPath = upData.path || "";
+                    }
+                } catch (e) {
+                    console.error(e);
+                    if (this.el.cs_error) this.el.cs_error.textContent = "Fallo al subir icono";
+                    return;
+                }
+
                 const subject = {
-                    id,
                     name,
-                    code: (this.el.cs_code?.value || "").trim(),
-                    title: name,
                     desc: (this.el.cs_desc?.value || "").trim(),
                     description: (this.el.cs_long?.value || "").trim(),
                     credits: Number(this.el.cs_credits?.value || 0),
                     professor: (this.el.cs_prof?.value || "").trim(),
                     schedule: (this.el.cs_sched?.value || "").trim(),
                     color: (this.el.cs_color?.value || "").trim(),
-                    icon: (this.el.cs_icon?.value || "").trim(),
+                    icon: iconPath,
                 };
                 if (this.el.cs_error) this.el.cs_error.textContent = "";
                 try {
@@ -650,7 +671,10 @@ const app = {
                     }
                     if (data.code !== 0) {
                         if (data.code === 21) {
-                            if (this.el.cs_error) this.el.cs_error.textContent = "Ya existe una asignatura con ese ID.";
+                            // ya existía id generado (raro)
+                            if (this.el.cs_error) this.el.cs_error.textContent = "Ya existe una asignatura con ese identificador.";
+                        } else if (data.code === 23) {
+                            if (this.el.cs_error) this.el.cs_error.textContent = "Falta el nombre";
                         } else {
                             if (this.el.cs_error) this.el.cs_error.textContent = "Error al crear asignatura (código " + data.code + ")";
                         }
@@ -663,15 +687,13 @@ const app = {
                     const reset = (el, def = "") => {
                         if (el) el.value = def;
                     };
-                    reset(this.el.cs_id);
                     reset(this.el.cs_name);
-                    reset(this.el.cs_code);
                     reset(this.el.cs_desc);
                     reset(this.el.cs_long);
                     reset(this.el.cs_prof);
                     reset(this.el.cs_sched);
                     reset(this.el.cs_color);
-                    reset(this.el.cs_icon);
+                    if (this.el.cs_iconFile) this.el.cs_iconFile.value = "";
                     reset(this.el.cs_credits, 6);
                     modals.close("#createSubjectModal");
                 } catch (err) {
@@ -706,6 +728,39 @@ const app = {
             },
             { once: true }
         );
+    },
+
+    // Swatches para crear asignatura (independientes del perfil)
+    renderCreateSubjectSwatches() {
+        const box = this.el.cs_swatches;
+        if (!box) return;
+        box.innerHTML = "";
+        PRESET_COLORS.forEach((c, idx) => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.className = "swatch";
+            b.style.background = c;
+            b.dataset.color = c;
+            b.addEventListener("click", () => {
+                this.el.cs_color.value = c;
+                this.selectCreateSubjectColor(c);
+            });
+            box.appendChild(b);
+        });
+        // Listener para input manual
+        if (this.el.cs_color) {
+            this.el.cs_color.addEventListener("input", () => this.selectCreateSubjectColor(this.el.cs_color.value), { once: true });
+        }
+        // Seleccionar primero por defecto si vacío
+        if (this.el.cs_color && !this.el.cs_color.value) {
+            this.el.cs_color.value = PRESET_COLORS[0];
+            this.selectCreateSubjectColor(PRESET_COLORS[0]);
+        }
+    },
+
+    selectCreateSubjectColor(color) {
+        const sws = Array.from(this.el.cs_swatches?.querySelectorAll(".swatch") || []);
+        sws.forEach((s) => s.classList.toggle("selected", s.dataset.color.toLowerCase() === (color || "").toLowerCase()));
     },
 
     selectColor(color) {

@@ -158,6 +158,48 @@ export function getArray() {
     return Array.from(SUBJECTS.values());
 }
 
+export function exists(id) {
+    return SUBJECTS.has(id);
+}
+
+function slugify(str) {
+    return (
+        String(str || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/(^-|-$)+/g, "") || "asignatura"
+    );
+}
+
+export function generateId(name) {
+    let base = slugify(name);
+    if (!SUBJECTS.has(base)) return base;
+    let i = 2;
+    while (SUBJECTS.has(`${base}-${i}`)) i++;
+    return `${base}-${i}`;
+}
+
+function codeExists(code) {
+    for (const s of SUBJECTS.values()) {
+        if ((s.code || "").toUpperCase() === String(code || "").toUpperCase()) return true;
+    }
+    return false;
+}
+
+export function generateCode(name) {
+    const letters = String(name || "SUB")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toUpperCase()
+        .replace(/[^A-Z]/g, "");
+    const prefix = (letters.slice(0, 3) || "SUB").padEnd(3, "X");
+    let num = 101;
+    while (codeExists(`${prefix}${num}`)) num++;
+    return `${prefix}${num}`;
+}
+
 export function addSubject(subject) {
     if (SUBJECTS.get(subject.id)) {
         return 21;

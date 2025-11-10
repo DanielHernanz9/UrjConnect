@@ -1,8 +1,21 @@
 import express, { json } from "express";
+import multer from "multer";
 import * as auth from "./authService.js";
-import * as subjects from "./subjectService.js"
+import * as subjects from "./subjectService.js";
 
 const router = express.Router();
+// Configuración de subida de iconos a /public/assets
+const upload = multer({
+    storage: multer.diskStorage({
+        destination: function (req, file, cb) {
+            cb(null, "public/assets");
+        },
+        filename: function (req, file, cb) {
+            const safe = file.originalname.replace(/[^a-zA-Z0-9_.-]+/g, "-");
+            cb(null, Date.now() + "-" + safe);
+        },
+    }),
+});
 
 const COOKIEOPTIONS = {
     httpOnly: true,
@@ -165,28 +178,51 @@ router.get("/subject/:id/forum", withAuth, (req, res) => {
 
 export default router;
 
+router.post("/uploadIcon", withAdmin, upload.single("icon"), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: { code: "NO_FILE", message: "Falta archivo" } });
+    const webPath = "/assets/" + req.file.filename;
+    return res.json({ path: webPath });
+});
+
 router.post("/createSubject", withAdmin, (req, res) => {
-    let code;
-    if (req.body.subject) {
-        code = subjects.addSubject(req.body.subject);
-    } else {
-        code = 20
+    try {
+        const body = req.body.subject || req.body || {};
+        if (!body.name) return res.json({ code: 23, error: { message: "Falta nombre" } });
+        // autogenerar id, code y title
+        const id = subjects.generateId(body.name);
+        const code = subjects.generateCode(body.name);
+        const subject = {
+            id,
+            name: body.name,
+            code,
+            title: body.name,
+            desc: body.desc || "",
+            description: body.description || "",
+            credits: body.credits ?? 0,
+            professor: body.professor || "",
+            schedule: body.schedule || "",
+            color: body.color || "",
+            icon: body.icon || "",
+        };
+        const rc = subjects.addSubject(subject);
+        return res.json({ code: rc, subject });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ error: { code: "SERVER", message: "Error creando asignatura" } });
     }
-    return res.json({ code })
-})
+});
 
 router.post("/subject/:id/modify", withAdmin, (req, res) => {
     let code;
     if (req.body.subject) {
-        subjects.modifySubject(req.body.subject);
-        code = 0
+        code = subjects.modifySubject(req.body.subject);
     } else {
-        code = 20
+        code = 20;
     }
-    return res.json({ code })
-})
+    return res.json({ code });
+});
 
 router.post("/subject/:id/delete", withAdmin, (req, res) => {
     subjects.deleteSubject(req.params.id);
     return res.redirect("/");
-})
+});
