@@ -490,7 +490,8 @@ const app = {
             enterBtn.setAttribute("aria-label", `Entrar al foro de ${s.name}`);
             enterBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
-                forum.open(s);
+                
+                window.location.href = `/subject/${encodeURIComponent(s.id)}/forum`;
             });
 
             // Hover visual handled by CSS. JavaScript no longer modifies transform on mouse events.

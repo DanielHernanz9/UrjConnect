@@ -172,8 +172,20 @@ router.get("/subject/:id/details", withAuth, (req, res) => {
 //renderizar página del foro
 router.get("/subject/:id/forum", withAuth, (req, res) => {
     const id = req.params.id;
-    const jsonUser = JSON.stringify({ name: req.user.getName(), email: req.user.getEmail(), bio: req.user.getBio() });
-    res.render("forum", { subject: { id }, jsonUser });
+    const subject = getSubjectById(id); // ✅ usa tu función definida arriba
+
+    if (!subject) {
+        return res.status(404).send("Asignatura no encontrada");
+    }
+
+    const jsonUser = JSON.stringify({
+        name: req.user.getName(),
+        email: req.user.getEmail(),
+        bio: req.user.getBio(),
+        color: req.user.getColor()
+    });
+
+    res.render("forum", { subject, jsonUser });
 });
 
 export default router;

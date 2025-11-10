@@ -1,9 +1,160 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="es" data-theme="dark">
     <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Document</title>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>URJConnect – Foro de {{subject.name}}</title>
+        <meta name="description" content="Foro de la asignatura {{subject.name}}" />
+        <link href="/css/styles.css" rel="stylesheet" />
+        <link rel="icon" type="image/png" href="/assets/logo.png" />
     </head>
-    <body></body>
+    <body>
+        <main class="app">
+            <header class="app-header glass">
+                <div class="brand">
+                    <a href="/" class="brand-link" style="display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: inherit">
+                        <div class="logo" aria-hidden="true">
+                            <img src="/assets/logo.png" alt="Logo URJConnect" style="width: 100%; height: 100%; object-fit: contain" />
+                        </div>
+                        <div class="brand-wordmark" aria-label="URJConnect">URJConnect</div>
+                    </a>
+                </div>
+
+                <div class="toolbar">
+                    <button class="icon-btn" id="themeToggle" title="Cambiar tema">🌓 Tema</button>
+                    <div class="divider"></div>
+
+                    <div class="profile">
+                        <button class="profile-btn" id="profileButton" aria-expanded="false" aria-controls="profileMenu">
+                            <div class="avatar" id="avatar">
+                                <span id="avatarInitials"></span>
+                            </div>
+                            <span id="profileName">Tu Nombre</span>
+                        </button>
+                        <div class="profile-menu dropdown" id="profileMenu">
+                            <button class="icon-btn" id="btnEditProfile">✏️ Editar perfil</button>
+                            <button class="icon-btn" id="btnLogout">🚪 Cerrar sesión</button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <section class="container">
+                <!-- Encabezado del foro -->
+                <div class="glass" style="padding: 18px; border-radius: 12px; margin-bottom: 20px">
+                    <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 12px">
+                        {{#subject.icon}}
+                        <div style="width: 54px; height: 54px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; overflow: hidden; background: {{subject.color}}; box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.35), 0 10px 24px rgba(0, 0, 0, 0.25)">
+                            <img src="{{subject.icon}}" alt="Icono {{subject.name}}" style="width: 80%; height: 80%; object-fit: contain" />
+                        </div>
+                        {{/subject.icon}}
+                        {{^subject.icon}}
+                        <div style="width: 54px; height: 54px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; overflow: hidden; background: {{subject.color}}; box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.35), 0 10px 24px rgba(0, 0, 0, 0.25); color: white; font-weight: 900; font-size: 20px">
+                            {{subject.name.[0]}}
+                        </div>
+                        {{/subject.icon}}
+                        <div style="flex: 1">
+                            <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: var(--primary)">Foro – {{subject.name}}</h1>
+                            <p style="margin: 6px 0 0; color: var(--muted); font-size: 14px">{{subject.desc}}</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px">
+                        <button class="link" id="backBtn" onclick="window.location.href=`/`">Volver al inicio</button>
+                        <button class="link" onclick="window.location.href=`/subject/{{subject.id}}/details`">Ver detalles</button>
+                    </div>
+                </div>
+
+                <!-- Mensajes del foro -->
+                <div class="mensage-forum" style="padding: 18px; border-radius: 12px; margin-bottom: 20px">
+                    <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 700">Mensajes</h2>
+                    <div class="posts" id="postsContainer">
+                        <!-- Aquí se cargarán los mensajes dinámicamente -->
+                        <div class="hint" style="padding: 24px; text-align: center">
+                            <p style="margin: 0">Aún no hay mensajes en este foro.</p>
+                            <p style="margin: 8px 0 0; font-size: 13px">¡Sé el primero en publicar algo!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulario para nuevo mensaje -->
+                <div class="glass" style="padding: 18px; border-radius: 12px">
+                    <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 700">Publicar mensaje</h2>
+                    <form id="newMessageForm">
+                        <div class="field">
+                            <label for="messageTitle">Título del mensaje</label>
+                            <input 
+                                id="messageTitle" 
+                                name="title" 
+                                type="text" 
+                                placeholder="Escribe un título para tu mensaje..." 
+                                required 
+                                style="width: 100%"
+                            />
+                        </div>
+                        <div class="field" style="margin-top: 12px">
+                            <label for="messageContent">Contenido</label>
+                            <textarea 
+                                id="messageContent" 
+                                name="content" 
+                                rows="5" 
+                                placeholder="Comparte una duda, recurso o idea sobre la asignatura..."
+                                required
+                            ></textarea>
+                        </div>
+                        <div class="actions" style="justify-content: flex-start; margin-top: 12px">
+                            <button class="btn" type="submit">Publicar mensaje</button>
+                            <button class="btn secondary" type="reset">Limpiar</button>
+                        </div>
+                        <div class="hint" style="margin-top: 12px; padding: 10px; background: var(--chip); border: 1px solid var(--chip-border); border-radius: 10px">
+                            💡 <strong>Nota:</strong> Esta es una vista previa del foro. La funcionalidad de publicar mensajes aún no está implementada.
+                        </div>
+                    </form>
+                </div>
+            </section>
+        </main>
+
+        <!-- Modal de editar perfil -->
+        <div class="modal" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+            <div class="content glass">
+                <div class="body">
+                    <h3 id="profileTitle" style="margin: 0 0 8px 0">Editar perfil</h3>
+                    <small class="hint">Actualiza tu nombre, color de avatar y una breve bio.</small>
+
+                    <div class="field" style="margin-top: 12px">
+                        <label for="p_name">Nombre</label>
+                        <input id="p_name" type="text" placeholder="Tu nombre" style="width: 100%; max-width: 420px" />
+                    </div>
+
+                    <div class="field" style="margin-top: 10px">
+                        <label for="p_color">Color del avatar</label>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px">
+                            <div class="swatches" id="p_swatches" aria-hidden="true"></div>
+                            <input id="p_color" type="color" value="#6366f1" aria-label="Color personalizado" />
+                        </div>
+                        <small class="hint">Elige un color para tu avatar o usa uno de los swatches.</small>
+                    </div>
+
+                    <div class="field">
+                        <label for="p_bio">Bio</label>
+                        <textarea id="p_bio" rows="3" placeholder="Cuéntanos algo breve sobre ti..."></textarea>
+                    </div>
+
+                    <div class="actions" style="justify-content: flex-end">
+                        <button class="btn" id="saveProfile">Guardar cambios</button>
+                        <button class="btn secondary" data-close="#profileModal">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+        {{#jsonUser}}
+        <script id="__initialUser" type="application/json">
+            {{{jsonUser}}}
+        </script>
+        {{/jsonUser}}
+
+        <script src="/forum.js"></script>
+    </body>
 </html>
