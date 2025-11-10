@@ -121,6 +121,11 @@ const store = {
     },
 };
 
+// Aplicar el tema guardado lo antes posible (también en pantalla de login/registro)
+try {
+    document.documentElement.setAttribute("data-theme", store.getTheme());
+} catch (e) {}
+
 // limpiar por si hay residuos de otra vez
 store.clearSession();
 
