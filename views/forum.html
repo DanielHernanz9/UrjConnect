@@ -44,12 +44,13 @@
                 <div class="glass" style="padding: 18px; border-radius: 12px; margin-bottom: 20px">
                     <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 12px">
                         {{#subject.icon}}
-                        <div style="width: 54px; height: 54px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; overflow: hidden; background: {{subject.color}}; box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.35), 0 10px 24px rgba(0, 0, 0, 0.25)">
+                        <div
+                            style="width: 54px; height: 54px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; overflow: hidden; background: {{subject.color}}; box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.35), 0 10px 24px rgba(0, 0, 0, 0.25)">
                             <img src="{{subject.icon}}" alt="Icono {{subject.name}}" style="width: 80%; height: 80%; object-fit: contain" />
                         </div>
-                        {{/subject.icon}}
-                        {{^subject.icon}}
-                        <div style="width: 54px; height: 54px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; overflow: hidden; background: {{subject.color}}; box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.35), 0 10px 24px rgba(0, 0, 0, 0.25); color: white; font-weight: 900; font-size: 20px">
+                        {{/subject.icon}} {{^subject.icon}}
+                        <div
+                            style="width: 54px; height: 54px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; overflow: hidden; background: {{subject.color}}; box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.35), 0 10px 24px rgba(0, 0, 0, 0.25); color: white; font-weight: 900; font-size: 20px">
                             {{subject.name.[0]}}
                         </div>
                         {{/subject.icon}}
@@ -58,9 +59,9 @@
                             <p style="margin: 6px 0 0; color: var(--muted); font-size: 14px">{{subject.desc}}</p>
                         </div>
                     </div>
-                    <div style="display: flex; gap: 8px">
-                        <button class="link" id="backBtn" onclick="window.location.href=`/`">Volver al inicio</button>
-                        <button class="link" onclick="window.location.href=`/subject/{{subject.id}}/details`">Ver detalles</button>
+                    <div class="forum-actions" style="display: flex; gap: 8px">
+                        <button class="link forum-btn" id="backBtn" type="button" aria-label="Volver al inicio" onclick="window.location.href='/'">Volver al inicio</button>
+                        <button class="link forum-btn" type="button" aria-label="Ver detalles de la asignatura" onclick="window.location.href='/subject/{{subject.id}}/details'">Ver detalles</button>
                     </div>
                 </div>
 
@@ -82,24 +83,11 @@
                     <form id="newMessageForm">
                         <div class="field">
                             <label for="messageTitle">Título del mensaje</label>
-                            <input 
-                                id="messageTitle" 
-                                name="title" 
-                                type="text" 
-                                placeholder="Escribe un título para tu mensaje..." 
-                                required 
-                                style="width: 100%"
-                            />
+                            <input id="messageTitle" name="title" type="text" placeholder="Escribe un título para tu mensaje..." required style="width: 100%" />
                         </div>
                         <div class="field" style="margin-top: 12px">
                             <label for="messageContent">Contenido</label>
-                            <textarea 
-                                id="messageContent" 
-                                name="content" 
-                                rows="5" 
-                                placeholder="Comparte una duda, recurso o idea sobre la asignatura..."
-                                required
-                            ></textarea>
+                            <textarea id="messageContent" name="content" rows="5" placeholder="Comparte una duda, recurso o idea sobre la asignatura..." required></textarea>
                         </div>
                         <div class="actions" style="justify-content: flex-start; margin-top: 12px">
                             <button class="btn" type="submit">Publicar mensaje</button>

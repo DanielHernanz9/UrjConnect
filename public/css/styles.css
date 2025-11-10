@@ -690,6 +690,11 @@ y aspecto más oscuro (para compatibilidad con casos puntuales) */
     border-radius: 12px;
     font-weight: 700;
 }
+.link:hover {
+    filter: brightness(1.08);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+}
 .enter {
     border: 0;
     background: var(--accent-2);
@@ -749,6 +754,13 @@ y aspecto más oscuro (para compatibilidad con casos puntuales) */
 .fav-item:hover {
     filter: brightness(1.1);
     border-color: var(--accent-2);
+}
+/* Hover claro para botones del foro (volver / ver detalles) */
+.forum-actions .forum-btn {
+    cursor: pointer; /* mano para indicar que es clicable */
+}
+.forum-actions .forum-btn:hover {
+    cursor: pointer; /* refuerzo explícito */
 }
 
 /* Color picker (Editar perfil) */
@@ -936,7 +948,6 @@ input[type="color"] {
     box-shadow: 0 14px 40px rgba(202, 16, 46, 0.12);
 }
 
-
 /* Forum style */
 
 /* ======= FORUM STYLES ======= */
@@ -1095,17 +1106,17 @@ input[type="color"] {
     .post {
         padding: 14px 16px;
     }
-    
+
     .post-header .avatar {
         width: 32px;
         height: 32px;
         font-size: 14px;
     }
-    
+
     .post-title {
         font-size: 16px;
     }
-    
+
     .post-content {
         font-size: 14px;
     }
@@ -1133,7 +1144,7 @@ input[type="color"] {
         animation: none;
         transition: none;
     }
-    
+
     .post:hover {
         transform: none;
     }
