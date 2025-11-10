@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!DOCTYPE html>
 <html lang="es" data-theme="dark">
     <head>
         <meta charset="utf-8" />
@@ -99,6 +98,7 @@
                     <div class="toolbar">
                         <button class="icon-btn" id="themeToggle" title="Cambiar tema">🌓 Tema</button>
                         <div class="divider"></div>
+                        <button class="icon-btn admin-only" id="btnOpenCreateSubject" style="display: none" title="Crear nueva asignatura">➕ Crear foro</button>
                         <div class="profile">
                             <button class="profile-btn" id="profileButton" aria-expanded="false" aria-controls="profileMenu">
                                 <div class="avatar" id="avatar">
@@ -175,69 +175,67 @@
             </div>
         </div>
         <div class="toast" id="toast" role="status" aria-live="polite"></div>
-        <template id="cardTemplate">
-            <article class="card" tabindex="0">
-                <div class="spark" aria-hidden="true"></div>
-                <div class="card-head">
-                    <div class="subject">
-                        <div class="ico" data-bg></div>
-                        <div class="title" data-title style="font-size: 16px"></div>
-                    </div>
-                    <button class="fav-toggle" title="Marcar como favorito" data-fav>☆</button>
+
+        <!-- Modal Crear Asignatura (Admin) -->
+        <div class="modal" id="createSubjectModal" role="dialog" aria-modal="true" aria-labelledby="createSubjectTitle" style="display: none">
+            <div class="content glass">
+                <div class="head" style="display: flex; justify-content: space-between; align-items: center; gap: 12px">
+                    <h3 id="createSubjectTitle" style="margin: 0">Crear nueva asignatura</h3>
+                    <button class="close" data-close="#createSubjectModal">Cerrar</button>
                 </div>
-                <p data-desc></p>
-                <div class="cta">
-                    <button type="button" class="link" data-details>Detalles</button>
-                    <button class="enter" data-enter>Entrar al foro</button>
-                </div>
-            </article>
-        </template>
-        {{#jsonUser}}
-        <script id="__initialUser" type="application/json">
-            {{{jsonUser}}}
-        </script>
-        {{/jsonUser}}
-        <script src="/app.js"></script>
-    </body>
-</html>
-                        <small class="hint">Elige un color para tu avatar o usa uno de los swatches.</small>
+                <div class="body" style="display: flex; flex-direction: column; gap: 12px">
+                    <div class="field">
+                        <label for="cs_id">ID (slug único)</label>
+                        <input id="cs_id" type="text" placeholder="p.ej. algebra2" required />
+                        <small class="hint">Sin espacios, se usará en la URL.</small>
                     </div>
                     <div class="field">
-                        <label for="p_bio">Bio</label>
-                        <textarea id="p_bio" rows="3" placeholder="Cuéntanos algo breve sobre ti..."></textarea>
+                        <label for="cs_name">Nombre</label>
+                        <input id="cs_name" type="text" placeholder="Nombre visible" required />
                     </div>
-                    <div class="actions" style="justify-content: flex-end">
-                        <button class="btn" id="saveProfile">Guardar cambios</button>
-                        <button class="btn secondary" data-close="#profileModal">Cancelar</button>
+                    <div class="field">
+                        <label for="cs_code">Código</label>
+                        <input id="cs_code" type="text" placeholder="Código interno (opcional)" />
                     </div>
+                    <div class="field">
+                        <label for="cs_desc">Descripción corta</label>
+                        <textarea id="cs_desc" rows="2" placeholder="Resumen corto"></textarea>
+                    </div>
+                    <div class="field">
+                        <label for="cs_long">Descripción larga</label>
+                        <textarea id="cs_long" rows="3" placeholder="Descripción detallada"></textarea>
+                    </div>
+                    <div class="row" style="display: flex; gap: 12px">
+                        <div class="field" style="flex: 1">
+                            <label for="cs_credits">Créditos</label>
+                            <input id="cs_credits" type="number" min="0" value="6" />
+                        </div>
+                        <div class="field" style="flex: 1">
+                            <label for="cs_prof">Profesor</label>
+                            <input id="cs_prof" type="text" />
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="cs_sched">Horario</label>
+                        <input id="cs_sched" type="text" placeholder="Lunes 10:00-12:00" />
+                    </div>
+                    <div class="field">
+                        <label for="cs_color">Color (CSS)</label>
+                        <input id="cs_color" type="text" placeholder="linear-gradient(135deg,#6366f1,#06b6d4)" />
+                        <small class="hint">Puede ser un color HEX o gradient.</small>
+                    </div>
+                    <div class="field">
+                        <label for="cs_icon">Icono (ruta)</label>
+                        <input id="cs_icon" type="text" placeholder="/assets/mates.png" />
+                    </div>
+                    <div class="actions" style="justify-content: flex-end; gap: 8px">
+                        <button class="btn secondary" data-close="#createSubjectModal">Cancelar</button>
+                        <button class="btn" id="btnCreateSubject">Crear</button>
+                    </div>
+                    <div class="error" id="createSubjectError" role="alert" aria-live="assertive"></div>
                 </div>
             </div>
         </div>
-
-        <div class="modal" id="forumModal" role="dialog" aria-modal="true" aria-labelledby="forumTitle">
-            <div class="content glass">
-                <div class="head">
-                    <h3 id="forumTitle">Foro</h3>
-                    <button class="close" data-close="#forumModal">Cerrar</button>
-                </div>
-                <div class="body">
-                    <div class="posts" id="posts"></div>
-                    <div class="row">
-                        <div class="field">
-                            <label for="newPost">Nuevo mensaje</label>
-                            <textarea id="newPost" rows="3" placeholder="Comparte una duda, recurso o idea..."></textarea>
-                        </div>
-                        <div style="display: flex; align-items: flex-end">
-                            <button class="btn" id="sendPost">Publicar</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
-        <!-- ============ TEMPLATE CARD ============ -->
         <template id="cardTemplate">
             <article class="card" tabindex="0">
                 <div class="spark" aria-hidden="true"></div>

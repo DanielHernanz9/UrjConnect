@@ -1,10 +1,11 @@
-import fs from 'fs';
-const SUBJECTS_DIR = "data/subjects/"
+import fs from "fs";
+const SUBJECTS_DIR = "data/subjects/";
 
 const SUBJECTS = new Map();
 
-function loadSubject(id) {
-    return JSON.parse(fs.readFileSync(SUBJECTS_DIR + id + ".json"));
+function loadSubject(idOrFile) {
+    const file = idOrFile.endsWith(".json") ? idOrFile : idOrFile + ".json";
+    return JSON.parse(fs.readFileSync(SUBJECTS_DIR + file));
 }
 
 function saveSubject(subject) {
@@ -12,23 +13,24 @@ function saveSubject(subject) {
 }
 
 function removeSubjectFile(id) {
-    fs.rmSync(SUBJECTS_DIR + id + ".json");
+    try {
+        fs.rmSync(SUBJECTS_DIR + id + ".json");
+    } catch (_) {}
 }
 
 if (fs.existsSync(SUBJECTS_DIR)) {
-    fs.readdir(SUBJECTS_DIR, (err, files) => {
-        if (err) {
-            console.error("Error reading folder:", err);
-            return;
-        }
-
-        files.forEach(file => {
-            const subject = loadSubject(file)
-            SUBJECTS.put(subject.id, subject);
+    try {
+        const files = fs.readdirSync(SUBJECTS_DIR);
+        files.forEach((file) => {
+            if (!file.endsWith(".json")) return;
+            const subject = loadSubject(file);
+            if (subject?.id) SUBJECTS.set(subject.id, subject);
         });
-    });
+    } catch (err) {
+        console.error("Error reading folder:", err);
+    }
 } else {
-    fs.mkdirSync(SUBJECTS_DIR, { recursive: true })
+    fs.mkdirSync(SUBJECTS_DIR, { recursive: true });
     const s = [
         {
             id: "matematicas",
@@ -141,10 +143,10 @@ if (fs.existsSync(SUBJECTS_DIR)) {
             schedule: "Jueves 14:00-16:00",
             color: "linear-gradient(135deg,#ec4899,#6366f1)",
             icon: "/assets/informatica.png",
-        }
-    ]
-    s.forEach(element => {
-        addSubject(element)
+        },
+    ];
+    s.forEach((element) => {
+        addSubject(element);
     });
 }
 
@@ -170,13 +172,12 @@ export function deleteSubject(id) {
     removeSubjectFile(id);
 }
 
-export function modifySubject(id, subject) {
-    if (!SUBJECTS.id) {
+export function modifySubject(subject) {
+    if (!subject?.id) return 22;
+    if (!SUBJECTS.has(subject.id)) {
         return 22;
-    }
-    if (id != subject.id) {
-        deleteSubject(id);
     }
     SUBJECTS.set(subject.id, subject);
     saveSubject(subject);
+    return 0;
 }

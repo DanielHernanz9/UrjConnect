@@ -303,6 +303,22 @@ const app = {
         cardsGrid: $("#cardsGrid"),
         themeToggle: $("#themeToggle"),
         search: $("#searchInput"),
+        // admin create subject
+        btnOpenCreateSubject: $("#btnOpenCreateSubject"),
+        createSubjectModal: $("#createSubjectModal"),
+        cs_id: $("#cs_id"),
+        cs_name: $("#cs_name"),
+        cs_code: $("#cs_code"),
+        cs_desc: $("#cs_desc"),
+        cs_long: $("#cs_long"),
+        cs_credits: $("#cs_credits"),
+        cs_prof: $("#cs_prof"),
+        cs_sched: $("#cs_sched"),
+        cs_color: $("#cs_color"),
+        cs_icon: $("#cs_icon"),
+        cs_save: $("#btnCreateSubject"),
+        cs_error: $("#createSubjectError"),
+
         // modals
         profileModal: $("#profileModal"),
         p_name: $("#p_name"),
@@ -335,6 +351,11 @@ const app = {
         this.el.avatar.style.background = store.getColor();
         this.el.avatarInitials.textContent = initialsOf(this.user.name || this.user.email);
 
+        // Admin UI
+        if (this.user.role === "admin" && this.el.btnOpenCreateSubject) {
+            this.el.btnOpenCreateSubject.style.display = "inline-flex";
+        }
+
         // Favorites UI
         this.renderFavDropdown();
         this.renderChips();
@@ -358,8 +379,8 @@ const app = {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                favourites: Array.from(favs)
-            })
+                favourites: Array.from(favs),
+            }),
         });
         this.renderFavDropdown();
         this.renderChips();
@@ -483,7 +504,7 @@ const app = {
                 body: JSON.stringify({
                     name: this.user.name,
                     bio: this.user.bio,
-                    color: this.user.color
+                    color: this.user.color,
                 }),
             });
             await response.json();
@@ -582,6 +603,83 @@ const app = {
 
         // Search
         this.el.search?.addEventListener("input", () => this.renderCards());
+
+        // Admin: abrir modal crear asignatura
+        if (this.el.btnOpenCreateSubject) {
+            this.el.btnOpenCreateSubject.addEventListener("click", () => {
+                if (this.user?.role !== "admin") return; // safety
+                modals.open("#createSubjectModal");
+            });
+        }
+        // Admin: guardar nueva asignatura
+        if (this.el.cs_save) {
+            this.el.cs_save.addEventListener("click", async () => {
+                if (this.user?.role !== "admin") return;
+                const id = (this.el.cs_id?.value || "").trim();
+                const name = (this.el.cs_name?.value || "").trim();
+                if (!id || !name) {
+                    if (this.el.cs_error) this.el.cs_error.textContent = "ID y Nombre son obligatorios";
+                    return;
+                }
+                const subject = {
+                    id,
+                    name,
+                    code: (this.el.cs_code?.value || "").trim(),
+                    title: name,
+                    desc: (this.el.cs_desc?.value || "").trim(),
+                    description: (this.el.cs_long?.value || "").trim(),
+                    credits: Number(this.el.cs_credits?.value || 0),
+                    professor: (this.el.cs_prof?.value || "").trim(),
+                    schedule: (this.el.cs_sched?.value || "").trim(),
+                    color: (this.el.cs_color?.value || "").trim(),
+                    icon: (this.el.cs_icon?.value || "").trim(),
+                };
+                if (this.el.cs_error) this.el.cs_error.textContent = "";
+                try {
+                    const response = await fetch("/createSubject", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ subject }),
+                    });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        if (response.status === 403) {
+                            if (this.el.cs_error) this.el.cs_error.textContent = "No tienes permisos.";
+                            return;
+                        }
+                    }
+                    if (data.code !== 0) {
+                        if (data.code === 21) {
+                            if (this.el.cs_error) this.el.cs_error.textContent = "Ya existe una asignatura con ese ID.";
+                        } else {
+                            if (this.el.cs_error) this.el.cs_error.textContent = "Error al crear asignatura (código " + data.code + ")";
+                        }
+                        return;
+                    }
+                    toast("Asignatura creada");
+                    await loadSubjects();
+                    this.renderCards();
+                    // Limpiar formulario
+                    const reset = (el, def = "") => {
+                        if (el) el.value = def;
+                    };
+                    reset(this.el.cs_id);
+                    reset(this.el.cs_name);
+                    reset(this.el.cs_code);
+                    reset(this.el.cs_desc);
+                    reset(this.el.cs_long);
+                    reset(this.el.cs_prof);
+                    reset(this.el.cs_sched);
+                    reset(this.el.cs_color);
+                    reset(this.el.cs_icon);
+                    reset(this.el.cs_credits, 6);
+                    modals.close("#createSubjectModal");
+                } catch (err) {
+                    console.error(err);
+                    if (this.el.cs_error) this.el.cs_error.textContent = "Error de red al crear asignatura";
+                }
+            });
+        }
     },
 
     /* ---------- Swatches helpers ---------- */
