@@ -810,7 +810,10 @@ input[type="color"] {
 }
 .modal .content {
     width: min(720px, 95vw);
+    max-height: 92vh; /* Evita que quede más alta que la pantalla */
     padding: 18px;
+    display: flex; /* Permite que el cuerpo sea scrollable */
+    flex-direction: column;
 }
 .modal .head {
     display: flex;
@@ -821,6 +824,8 @@ input[type="color"] {
 .modal .body {
     display: grid;
     gap: 12px;
+    overflow: auto; /* Habilita scroll cuando el contenido es largo */
+    min-height: 0; /* Necesario para que overflow funcione dentro de flex */
 }
 .close {
     border: 0;
