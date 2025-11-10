@@ -580,10 +580,6 @@ label {
     }
 }
 
-/* El resto de tu CSS sigue igual (auth, toolbar, posts, modals, favoritos, etc.) */
-
-/* Puedes seguir pegando aquí todo lo demás del CSS que ya tenías */
-
 .card-head {
     display: flex;
     align-items: center;
@@ -631,7 +627,7 @@ label {
     box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
 }
 /* Si un botón tiene el atributo disabled, mostrar not-allowed
-     y aspecto más oscuro (para compatibilidad con casos puntuales) */
+y aspecto más oscuro (para compatibilidad con casos puntuales) */
 .card button[disabled] {
     opacity: 0.6;
     cursor: not-allowed;
@@ -810,7 +806,10 @@ input[type="color"] {
 }
 .modal .content {
     width: min(720px, 95vw);
+    max-height: 92vh; /* Evita que quede más alta que la pantalla */
     padding: 18px;
+    display: flex; /* Permite que el cuerpo sea scrollable */
+    flex-direction: column;
 }
 .modal .head {
     display: flex;
@@ -821,6 +820,8 @@ input[type="color"] {
 .modal .body {
     display: grid;
     gap: 12px;
+    overflow: auto;
+    min-height: 0;
 }
 .close {
     border: 0;
@@ -879,7 +880,6 @@ input[type="color"] {
     transform: translateX(-50%) translateY(0);
 }
 
-/* Style for the 'Favoritos' filter button: match chip size/shape but keep color */
 #filterFavsBtn {
     padding: 8px 12px;
     background: var(--chip);
@@ -893,7 +893,7 @@ input[type="color"] {
     font-weight: 400; /* quitar negrita */
     font-size: 13px; /* mas pequeño */
 }
-/* Keep the same color when hovered/pressed, but give a subtle visual cue */
+
 #filterFavsBtn:hover {
     filter: brightness(1.03);
 }
