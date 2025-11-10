@@ -62,8 +62,11 @@
                 </div>
 
                 <div class="cta" style="margin-top: 18px; display: flex; gap: 8px">
-                    <button class="link" id="backBtn" onclick="window.location.href=`/`">Volver</button>
-                    <button class="enter" data-enter id="enterForum">Entrar al foro</button>
+                    <button class="link" id="backBtn" onclick="window.history.back()">Volver</button>
+                    <button class="enter" onclick="window.location.href='/subject/{{subject.id}}/forum'">
+                        Entrar al foro
+                    </button>
+                    
                 </div>
             </section>
         </main>
