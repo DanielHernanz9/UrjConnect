@@ -873,6 +873,67 @@ if (authUI.authSection) {
     authUI.setTab("login");
 }
 
+// Handler del formulario de cambio de contraseña
+const passwordForm = document.getElementById("newPasswordForm");
+if (passwordForm) {
+    passwordForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const oldPasswordInput = document.getElementById("contraseñaActual");
+        const newPasswordInput = document.getElementById("nuevaContraseña");
+        const confirmarInput = document.getElementById("confirmarContraseña");
+
+        const oldPassword = oldPasswordInput.value;
+        const newPassword = newPasswordInput.value;
+        const confirmar = confirmarInput.value;
+
+        if (!oldPassword) {
+            toast("Debes ingresar tu contraseña actual");
+            return;
+        }
+
+        if (!newPassword) {
+            toast("Debes ingresar una nueva contraseña");
+            return;
+        }
+
+        if (!confirmar) {
+            toast("Debes confirmar la nueva contraseña");
+            return;
+        }
+
+        if (newPassword !== confirmar) {
+            toast("Las contraseñas nuevas no coinciden");
+            return;
+        }
+
+        try {
+            const respuesta = await fetch("/changePassword", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ oldPassword, newPassword }),
+            });
+
+            const data = await respuesta.json();
+
+            if (data.code === 0) {
+                alert("Contraseña cambiada correctamente");
+                passwordForm.reset(); //vaciar el formulario
+
+                // Redirigir a la página principal
+                  window.location.href = "/";
+            } else if (data.code === 2) {
+                alert("La contraseña actual es incorrecta");
+            } else {
+                alert("Ocurrió un error al cambiar la contraseña");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error al comunicarse con el servidor");
+        }
+    });
+}
+
 async function loadSubjects() {
     try {
         const response = await fetch("/api/subjects");
