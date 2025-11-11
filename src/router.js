@@ -244,3 +244,18 @@ router.post("/subject/:id/delete", withAdmin, (req, res) => {
     subjects.deleteSubject(req.params.id);
     return res.redirect("/");
 });
+
+router.post("/changePassword", withAuth, (req, res) => {
+    const user = req.user;
+    const oldPassword = req.body.oldPassword;
+    const newPassword = req.body.newPassword;
+    if (user.isPassword(oldPassword)) {
+        user.changePassword(newPassword);
+        return res.json({
+            code: 0
+        });
+    }
+    return res.json({
+        code: 2
+    });
+})
