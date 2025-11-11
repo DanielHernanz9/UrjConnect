@@ -879,13 +879,9 @@ if (passwordForm) {
     passwordForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        const oldPasswordInput = document.getElementById("contraseñaActual");
-        const newPasswordInput = document.getElementById("nuevaContraseña");
-        const confirmarInput = document.getElementById("confirmarContraseña");
-
-        const oldPassword = oldPasswordInput.value;
-        const newPassword = newPasswordInput.value;
-        const confirmar = confirmarInput.value;
+        const oldPassword = document.getElementById("contraseñaActual").value;
+        const newPassword = document.getElementById("nuevaContraseña").value;
+        const confirmar = document.getElementById("confirmarContraseña").value;
 
         if (!oldPassword) {
             toast("Debes ingresar tu contraseña actual");
