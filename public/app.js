@@ -303,6 +303,7 @@ const app = {
         profileName: $("#profileName"),
         btnEditProfile: $("#btnEditProfile"),
         btnLogout: $("#btnLogout"),
+        changePasswordbtn: $("#changePasswordbtn"),
         filterFavsBtn: $("#filterFavsBtn"),
         chipsRow: $("#chipsRow"),
         cardsGrid: $("#cardsGrid"),
@@ -581,6 +582,11 @@ const app = {
                 return;
             }
             setTimeout(() => location.reload(), 400);
+        });
+
+        // Cambiar contraseña - redirigir a editPassword.html
+        this.el.changePasswordbtn?.addEventListener("click", () => {
+            window.location.href = "/editPassword";
         });
 
         // Filter favorites button (above the grid)

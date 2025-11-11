@@ -74,6 +74,12 @@ router.get("/", (req, res) => {
     res.render("index");
 });
 
+//Router para redireccionar a la pagina de editar contraseña
+router.get("/editPassword", withAuth, (req, res) => {
+    const jsonUser = req.user.toJson();
+    res.render("editPassword", { jsonUser });
+});
+
 //router.get("/dashboard",(req,res)=>{
 //    res.render("general.html")
 //});
