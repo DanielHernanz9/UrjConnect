@@ -61,6 +61,10 @@ export default class User {
         this.password = password;
         this.saveToFile();
     }
+
+    changePassword(password) {
+        this.setPassword(bcrypt.hashSync(password, 10))
+    }
         
     setBio(bio) {
         this.bio = bio;
@@ -76,7 +80,7 @@ export default class User {
         if (fs.existsSync(USERS_DIR + email)) {
             return 11;
         }
-        const hashedPassword = bcrypt.hashSync(password,10)
+        const hashedPassword = bcrypt.hashSync(password, 10)
         const o = new User(email, hashedPassword, name, bio, DEFAULT_COLOR, new Set(), "user");
         o.saveToFile();
         return o;
