@@ -5,8 +5,8 @@
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>URJConnect — Acceso</title>
         <meta name="description" content="URJConnect • Iniciar sesión o crear cuenta." />
-        <link href="css/styles.css" rel="stylesheet" />
-        <link rel="icon" type="image/png" href="assets/logo.png" />
+        <link href="/css/styles.css" rel="stylesheet" />
+        <link rel="icon" type="image/png" href="/assets/logo.png" />
     </head>
     <body>
         <div class="aurora" aria-hidden="true"></div>
@@ -34,7 +34,15 @@
                                 </div>
                                 <div class="field">
                                     <label for="li_pass">Contraseña</label>
-                                    <input id="li_pass" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required />
+                                    <div class="pw-wrap">
+                                        <input id="li_pass" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required />
+                                        <button type="button" class="pw-toggle" data-pw-toggle="li_pass" aria-label="Mostrar contraseña">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
+                                                <circle cx="12" cy="12" r="3" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="actions">
                                     <button class="btn" type="submit">Entrar</button>
@@ -56,11 +64,27 @@
                                 <div class="row">
                                     <div class="field">
                                         <label for="r_pass">Contraseña</label>
-                                        <input id="r_pass" name="password" type="password" placeholder="Mín. 6 caracteres" minlength="6" required />
+                                        <div class="pw-wrap">
+                                            <input id="r_pass" name="password" type="password" placeholder="Mín. 6 caracteres" minlength="6" required />
+                                            <button type="button" class="pw-toggle" data-pw-toggle="r_pass" aria-label="Mostrar contraseña">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
+                                                    <circle cx="12" cy="12" r="3" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="field">
                                         <label for="r_pass2">Repetir contraseña</label>
-                                        <input id="r_pass2" name="password2" type="password" placeholder="Repite la contraseña" minlength="6" required />
+                                        <div class="pw-wrap">
+                                            <input id="r_pass2" name="password2" type="password" placeholder="Repite la contraseña" minlength="6" required />
+                                            <button type="button" class="pw-toggle" data-pw-toggle="r_pass2" aria-label="Mostrar contraseña">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
+                                                    <circle cx="12" cy="12" r="3" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="field">
@@ -77,11 +101,6 @@
                 </div>
             </section>
         </main>
-        {{#jsonUser}}
-        <script id="__initialUser" type="application/json">
-            {{{jsonUser}}}
-        </script>
-        {{/jsonUser}}
-        <script src="/app.js"></script>
+        <script src="/login.js"></script>
     </body>
 </html>

@@ -104,7 +104,9 @@ const store = {
         return localStorage.getItem("theme") || "dark";
     },
     getFavourites() {
-        return this.getSession().favourites;
+        const sess = this.getSession();
+        const favs = sess && Array.isArray(sess.favourites) ? sess.favourites : [];
+        return favs;
     },
     setFavourites(favourites) {
         const user = this.getSession();
@@ -173,12 +175,12 @@ const authUI = {
         });
     },
     showApp() {
-        this.authSection.style.display = "none";
-        this.appSection.style.display = "block";
+        if (this.authSection) this.authSection.style.display = "none";
+        if (this.appSection) this.appSection.style.display = "block";
     },
     showAuth() {
-        this.authSection.style.display = "flex";
-        this.appSection.style.display = "none";
+        if (this.authSection) this.authSection.style.display = "flex";
+        if (this.appSection) this.appSection.style.display = "none";
     },
     measureInit() {
         this.formsWrap.style.height = this.loginForm.offsetHeight + "px";
@@ -340,6 +342,7 @@ const app = {
     },
     user: null,
     onlyFavs: false,
+    activeChipId: null,
 
     init() {
         this.user = store.getSession();
@@ -412,8 +415,21 @@ const app = {
             if (!subj) return;
             const chip = document.createElement("button");
             chip.className = "chip starred";
+            if (this.activeChipId === id) chip.classList.add("selected");
             chip.innerHTML = `⭐ ${subj.name}`;
-            chip.addEventListener("click", () => this.renderCards(id));
+            chip.addEventListener("click", () => {
+                if (this.activeChipId === id) {
+                    // Quitar filtro individual
+                    this.activeChipId = null;
+                    toast("Filtro de favorito desactivado");
+                } else {
+                    // Activar filtro por este favorito
+                    this.activeChipId = id;
+                    toast(`Mostrando: ⭐ ${subj.name}`);
+                }
+                this.renderChips();
+                this.renderCards();
+            });
             chipsRow.appendChild(chip);
         });
     },
@@ -424,7 +440,8 @@ const app = {
         g.innerHTML = "";
         const q = (this.el.search?.value || "").toLowerCase().trim();
 
-        let list = SUBJECTS.filter((s) => !filterById || s.id === filterById);
+        const chipFilter = filterById !== undefined ? filterById : this.activeChipId;
+        let list = SUBJECTS.filter((s) => !chipFilter || s.id === chipFilter);
         // If the app is in 'only favorites' mode, filter accordingly
         if (this.onlyFavs) {
             list = list.filter((s) => this.isFav(s.id));

@@ -71,7 +71,19 @@ router.get("/", (req, res) => {
             return;
         }
     }
-    res.render("index");
+    // No autenticado: mostrar página de login separada
+    res.render("login");
+});
+
+// Ruta explícita de login
+router.get("/login", (req, res) => {
+    if (req.cookies && req.cookies.session_id) {
+        const user = auth.authenticate(req.cookies.session_id);
+        if (user) {
+            return res.redirect("/");
+        }
+    }
+    res.render("login");
 });
 
 //Router para redireccionar a la pagina de editar contraseña
@@ -188,7 +200,7 @@ router.get("/subject/:id/forum", withAuth, (req, res) => {
         name: req.user.getName(),
         email: req.user.getEmail(),
         bio: req.user.getBio(),
-        color: req.user.getColor()
+        color: req.user.getColor(),
     });
 
     res.render("forum", { subject, jsonUser });
@@ -258,10 +270,10 @@ router.post("/changePassword", withAuth, (req, res) => {
     if (user.isPassword(oldPassword)) {
         user.changePassword(newPassword);
         return res.json({
-            code: 0
+            code: 0,
         });
     }
     return res.json({
-        code: 2
+        code: 2,
     });
-})
+});
