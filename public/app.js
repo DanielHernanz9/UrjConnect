@@ -421,11 +421,9 @@ const app = {
                 if (this.activeChipId === id) {
                     // Quitar filtro individual
                     this.activeChipId = null;
-                    toast("Filtro de favorito desactivado");
                 } else {
                     // Activar filtro por este favorito
                     this.activeChipId = id;
-                    toast(`Mostrando: ⭐ ${subj.name}`);
                 }
                 this.renderChips();
                 this.renderCards();
