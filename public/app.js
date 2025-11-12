@@ -491,7 +491,7 @@ const app = {
             enterBtn.setAttribute("aria-label", `Entrar al foro de ${s.name}`);
             enterBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
-                
+
                 window.location.href = `/subject/${encodeURIComponent(s.id)}/forum`;
             });
 
@@ -615,6 +615,9 @@ const app = {
 
         // Search
         this.el.search?.addEventListener("input", () => this.renderCards());
+
+        // Password toggles (login / register)
+        this.initPasswordToggles();
 
         // Admin: abrir modal crear asignatura
         if (this.el.btnOpenCreateSubject) {
@@ -779,6 +782,77 @@ const app = {
         const sws = Array.from(this.el.p_swatches.querySelectorAll(".swatch"));
         sws.forEach((s) => s.classList.toggle("selected", s.dataset.color.toLowerCase() === (color || "").toLowerCase()));
     },
+
+    initPasswordToggles() {
+        // Mostrar contraseña solo mientras se mantiene pulsado el botón (mouse o touch)
+        const addSlash = (svg) => {
+            if (!svg) return;
+            if (!svg.querySelector("path[data-hide]")) {
+                const slash = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                slash.setAttribute("d", "M3 3L21 21");
+                slash.setAttribute("stroke", "currentColor");
+                slash.setAttribute("stroke-width", "2");
+                slash.setAttribute("stroke-linecap", "round");
+                slash.setAttribute("data-hide", "");
+                svg.appendChild(slash);
+            }
+        };
+        const removeSlash = (svg) => {
+            if (!svg) return;
+            const hideEl = svg.querySelector("path[data-hide]");
+            if (hideEl) hideEl.remove();
+        };
+        const showWhileHold = (btn) => {
+            const id = btn.getAttribute("data-pw-toggle");
+            const input = document.getElementById(id);
+            if (!input) return;
+            input.type = "text";
+            btn.setAttribute("aria-label", "Ocultar contraseña");
+            removeSlash(btn.querySelector("svg")); // ojo normal por defecto
+            addSlash(btn.querySelector("svg")); // tachado solo mientras se mantiene
+        };
+        const hideOnRelease = (btn) => {
+            const id = btn.getAttribute("data-pw-toggle");
+            const input = document.getElementById(id);
+            if (!input) return;
+            input.type = "password";
+            btn.setAttribute("aria-label", "Mostrar contraseña");
+            removeSlash(btn.querySelector("svg"));
+        };
+        document.querySelectorAll("[data-pw-toggle]")?.forEach((btn) => {
+            // Evitar persistente: no usamos click toggle
+            btn.addEventListener("mousedown", (e) => {
+                if (e.button !== 0) return;
+                showWhileHold(btn);
+            });
+            btn.addEventListener("mouseup", () => hideOnRelease(btn));
+            btn.addEventListener("mouseleave", () => hideOnRelease(btn));
+            // Touch support
+            btn.addEventListener(
+                "touchstart",
+                (e) => {
+                    e.preventDefault();
+                    showWhileHold(btn);
+                },
+                { passive: false }
+            );
+            const touchEnd = () => hideOnRelease(btn);
+            btn.addEventListener("touchend", touchEnd);
+            btn.addEventListener("touchcancel", touchEnd);
+            // Keyboard (espacio)
+            btn.addEventListener("keydown", (e) => {
+                if (e.code === "Space" || e.key === " ") {
+                    e.preventDefault();
+                    showWhileHold(btn);
+                }
+            });
+            btn.addEventListener("keyup", (e) => {
+                if (e.code === "Space" || e.key === " ") {
+                    hideOnRelease(btn);
+                }
+            });
+        });
+    },
 };
 
 /** =========================
@@ -917,7 +991,7 @@ if (passwordForm) {
                 passwordForm.reset(); //vaciar el formulario
 
                 // Redirigir a la página principal
-                  window.location.href = "/";
+                window.location.href = "/";
             } else if (data.code === 2) {
                 alert("La contraseña actual es incorrecta");
             } else {

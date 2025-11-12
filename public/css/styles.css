@@ -249,6 +249,39 @@ label {
     outline: none;
     width: 100%;
 }
+/* Password reveal UI */
+.field .pw-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.field .pw-wrap > input {
+    padding-right: 42px; /* espacio para el botón ojo */
+}
+.pw-toggle {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 0;
+    background: var(--chip);
+    border: 1px solid var(--chip-border);
+    color: var(--muted);
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+}
+.pw-toggle:hover {
+    color: var(--text);
+    filter: brightness(1.06);
+}
+.pw-toggle svg {
+    width: 18px;
+    height: 18px;
+}
 .field small {
     color: var(--muted);
 }
