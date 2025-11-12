@@ -102,17 +102,15 @@
         </main>
 
         <!-- Modal de editar perfil -->
-        <div class="modal" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+       <div class="modal" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
             <div class="content glass">
                 <div class="body">
                     <h3 id="profileTitle" style="margin: 0 0 8px 0">Editar perfil</h3>
                     <small class="hint">Actualiza tu nombre, color de avatar y una breve bio.</small>
-
                     <div class="field" style="margin-top: 12px">
                         <label for="p_name">Nombre</label>
                         <input id="p_name" type="text" placeholder="Tu nombre" style="width: 100%; max-width: 420px" />
                     </div>
-
                     <div class="field" style="margin-top: 10px">
                         <label for="p_color">Color del avatar</label>
                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px">
@@ -121,12 +119,16 @@
                         </div>
                         <small class="hint">Elige un color para tu avatar o usa uno de los swatches.</small>
                     </div>
-
                     <div class="field">
                         <label for="p_bio">Bio</label>
                         <textarea id="p_bio" rows="3" placeholder="Cuéntanos algo breve sobre ti..."></textarea>
                     </div>
-
+                    <div>
+                        <small class="hint" style="margin: 0 0 8px 0">Configuración de la cuenta</small>
+                    </div>
+                    <div>
+                        <button class="btn" id="changePasswordbtn" style="margin-top: 10px" onclick="window.location.href='/editPassword'">Cambiar contraseña</button>
+                    </div>
                     <div class="actions" style="justify-content: flex-end">
                         <button class="btn" id="saveProfile">Guardar cambios</button>
                         <button class="btn secondary" data-close="#profileModal">Cancelar</button>
