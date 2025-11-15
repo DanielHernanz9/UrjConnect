@@ -64,7 +64,7 @@ const forumApp = {
         saveProfile: $("#saveProfile"),
         postsContainer: $("#postsContainer"),
         newMessageForm: $("#newMessageForm"),
-        deleteForumForm: $("#deleteForumForm")
+        deleteForumForm: $("#deleteForumForm"),
     },
     user: null,
     subject: null,
@@ -87,7 +87,7 @@ const forumApp = {
         if (this.user.role === "admin" && this.el.deleteForumForm) {
             this.el.deleteForumForm.style.display = "block";
         }
-        
+
         // Cargar información del foro
         this.loadForumData();
 
@@ -109,7 +109,7 @@ const forumApp = {
             // Cargar datos de la asignatura
             const response = await fetch(`/api/subjects/${subjectId}`);
             if (!response.ok) throw new Error("Error al cargar la asignatura");
-            
+
             this.subject = await response.json();
 
             // Aquí se cargarían los mensajes del foro desde el servidor
@@ -123,7 +123,7 @@ const forumApp = {
 
     renderMessages(messages) {
         const container = this.el.postsContainer;
-        
+
         if (!messages || messages.length === 0) {
             container.innerHTML = `
                 <div class="hint" style="padding: 24px; text-align: center">
@@ -209,18 +209,18 @@ const forumApp = {
             const name = this.el.p_name.value.trim();
             const bio = this.el.p_bio.value.trim();
             const avatarColor = this.el.p_color.value;
-            
+
             this.user.name = name;
             this.user.bio = bio;
             this.user.color = avatarColor;
-            
+
             store.setSession(JSON.stringify(this.user));
             this.updateUser();
-            
+
             this.el.profileName.textContent = this.user.name || "Tu Nombre";
             this.el.avatar.style.background = this.user.color;
             this.el.avatarInitials.textContent = initialsOf(this.user.name || this.user.email);
-            
+
             toast("Perfil actualizado");
             this.closeModal("#profileModal");
         });
@@ -305,7 +305,20 @@ const forumApp = {
 document.addEventListener("DOMContentLoaded", () => {
     // Aplicar tema lo antes posible
     document.documentElement.setAttribute("data-theme", store.getTheme());
-    
+    // Hidratar sesión desde el servidor si está disponible (incluye role)
+    try {
+        const el = document.getElementById("__initialUser");
+        if (el) {
+            const raw = (el.textContent || "").trim();
+            if (raw) {
+                // Sobrescribe/establece la sesión para asegurar que role esté presente
+                store.setSession(raw);
+            }
+        }
+    } catch (e) {
+        // noop
+    }
+
     // Inicializar la app
     forumApp.init();
 });

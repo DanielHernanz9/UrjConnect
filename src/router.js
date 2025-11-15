@@ -182,7 +182,8 @@ router.get("/subject/:id/details", withAuth, (req, res) => {
     const id = req.params.id;
     // obtener la asignatura completa (description y demás atributos)
     const subject = getSubjectById(id);
-    const jsonUser = JSON.stringify({ name: req.user.getName(), email: req.user.getEmail(), bio: req.user.getBio(), color: req.user.getColor() });
+    // Incluir todos los campos del usuario (incluido role) para que el cliente pueda decidir la UI (botones admin, etc.)
+    const jsonUser = req.user.toJson();
     // pasar el objeto subject completo a la plantilla
     res.render("subject", { subject, jsonUser });
 });
@@ -196,12 +197,8 @@ router.get("/subject/:id/forum", withAuth, (req, res) => {
         return res.status(404).send("Asignatura no encontrada");
     }
 
-    const jsonUser = JSON.stringify({
-        name: req.user.getName(),
-        email: req.user.getEmail(),
-        bio: req.user.getBio(),
-        color: req.user.getColor(),
-    });
+    // Enviar el usuario completo (incluye role) para que el cliente pueda mostrar acciones de admin
+    const jsonUser = req.user.toJson();
 
     res.render("forum", { subject, jsonUser });
 });
