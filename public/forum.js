@@ -64,6 +64,7 @@ const forumApp = {
         saveProfile: $("#saveProfile"),
         postsContainer: $("#postsContainer"),
         newMessageForm: $("#newMessageForm"),
+        deleteForumForm: $("#deleteForumForm")
     },
     user: null,
     subject: null,
@@ -83,6 +84,10 @@ const forumApp = {
         this.el.avatar.style.background = store.getColor();
         this.el.avatarInitials.textContent = initialsOf(this.user.name || this.user.email);
 
+        if (this.user.role === "admin" && this.el.deleteForumForm) {
+            this.el.deleteForumForm.style.display = "block";
+        }
+        
         // Cargar información del foro
         this.loadForumData();
 
