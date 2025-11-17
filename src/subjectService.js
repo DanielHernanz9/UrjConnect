@@ -34,7 +34,9 @@ function resetToDefaults(defaults) {
         const files = fs.readdirSync(SUBJECTS_DIR);
         for (const f of files) {
             if (f.endsWith(".json")) {
-                try { fs.rmSync(SUBJECTS_DIR + f); } catch (_) {}
+                try {
+                    fs.rmSync(SUBJECTS_DIR + f);
+                } catch (_) {}
             }
         }
     } catch (e) {
