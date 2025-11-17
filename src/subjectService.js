@@ -1,4 +1,5 @@
 import fs from "fs";
+import path from "path";
 const SUBJECTS_DIR = "data/subjects/";
 
 const SUBJECTS = new Map();
@@ -230,6 +231,23 @@ export function addSubject(subject) {
 }
 
 export function deleteSubject(id) {
+    // Eliminar archivo de icono asociado (si apunta a /assets/...)
+    const subject = SUBJECTS.get(id);
+    if (subject && subject.icon && typeof subject.icon === "string") {
+        try {
+            // Solo permitimos borrar archivos dentro de public/assets
+            if (subject.icon.startsWith("/assets/")) {
+                const fileName = path.basename(subject.icon); // evita path traversal
+                const assetFile = path.join("public", "assets", fileName);
+                if (fs.existsSync(assetFile)) {
+                    fs.unlinkSync(assetFile);
+                }
+            }
+        } catch (err) {
+            console.error("Error deleting asset for subject", id, err);
+        }
+    }
+
     SUBJECTS.delete(id);
     removeSubjectFile(id);
 }
