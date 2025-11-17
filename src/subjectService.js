@@ -3,6 +3,8 @@ import path from "path";
 const SUBJECTS_DIR = "data/subjects/";
 
 const SUBJECTS = new Map();
+// Mapa de alias para redirecciones tras renombrar (oldId -> newId)
+const ALIASES = new Map();
 
 function loadSubject(idOrFile) {
     const file = idOrFile.endsWith(".json") ? idOrFile : idOrFile + ".json";
@@ -196,6 +198,13 @@ function slugify(str) {
     );
 }
 
+// Generar id a partir del nombre, únicamente en minúsculas (sin slug)
+export function idFromNameLower(name) {
+    return String(name || "")
+        .toLowerCase()
+        .trim();
+}
+
 export function generateId(name) {
     let base = slugify(name);
     if (!SUBJECTS.has(base)) return base;
@@ -262,4 +271,53 @@ export function modifySubject(subject) {
     SUBJECTS.set(subject.id, subject);
     saveSubject(subject);
     return 0;
+}
+
+export function setAlias(oldId, newId) {
+    if (oldId && newId && oldId !== newId) {
+        ALIASES.set(oldId, newId);
+    }
+}
+
+export function getAlias(id) {
+    return ALIASES.get(id) || null;
+}
+
+// Modificar usando el id de la ruta, recalculando id si cambia el nombre
+export function modifySubjectById(oldId, incoming) {
+    if (!oldId) return { code: 22 };
+    const prev = SUBJECTS.get(oldId);
+    if (!prev) return { code: 22 };
+
+    const updated = { ...prev, ...(incoming || {}) };
+    const nextName = updated.name ?? prev.name;
+    const nameChanged = nextName !== prev.name;
+    const desiredId = idFromNameLower(nextName);
+
+    // Si el id deseado existe y no es el mismo registro, conflicto
+    if (desiredId !== oldId && SUBJECTS.has(desiredId)) {
+        return { code: 21 }; // ya existe
+    }
+
+    // Si cambió el nombre, regenerar también el code basado en el nuevo nombre
+    if (nameChanged) {
+        updated.code = generateCode(nextName);
+    }
+
+    if (desiredId !== oldId) {
+        // Renombrar: guardar con nuevo id y borrar fichero viejo
+        updated.id = desiredId;
+        SUBJECTS.delete(oldId);
+        SUBJECTS.set(desiredId, updated);
+        saveSubject(updated);
+        removeSubjectFile(oldId);
+        setAlias(oldId, desiredId);
+        return { code: 0, id: desiredId, newCode: updated.code };
+    } else {
+        // El id no cambia, solo actualizar
+        updated.id = oldId;
+        SUBJECTS.set(oldId, updated);
+        saveSubject(updated);
+        return { code: 0, id: oldId, newCode: updated.code };
+    }
 }

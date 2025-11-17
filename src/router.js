@@ -151,10 +151,13 @@ router.post("/logout", (req, res) => {
 function getSubjectById(id) {
     if (!id) return null;
     const key = String(id);
-    const s = subjects.getSubject(key);
+    // Resolver alias (oldId -> newId) si existe
+    const alias = subjects.getAlias ? subjects.getAlias(key) : null;
+    const lookupKey = alias || key;
+    const s = subjects.getSubject(lookupKey);
     if (s) return s;
     return {
-        id: key,
+        id: lookupKey,
         code: "",
         title: "Asignatura no encontrada",
         desc: "No se encontró descripción para esta asignatura.",
@@ -173,13 +176,20 @@ router.get("/api/subjects", (req, res) => {
 
 // API: obtener una asignatura por id
 router.get("/api/subjects/:id", (req, res) => {
-    const s = getSubjectById(req.params.id);
+    const id = req.params.id;
+    const alias = subjects.getAlias ? subjects.getAlias(id) : null;
+    const s = getSubjectById(alias || id);
     res.json(s);
 });
 
 //renderizar pagina de detalles de la asignatura
 router.get("/subject/:id/details", withAuth, (req, res) => {
     const id = req.params.id;
+    // Redirigir si hay alias (id antiguo => id nuevo)
+    const alias = subjects.getAlias ? subjects.getAlias(id) : null;
+    if (alias) {
+        return res.redirect(`/subject/${encodeURIComponent(alias)}/details`);
+    }
     // obtener la asignatura completa (description y demás atributos)
     const subject = getSubjectById(id);
     // Incluir todos los campos del usuario (incluido role) para que el cliente pueda decidir la UI (botones admin, etc.)
@@ -191,6 +201,11 @@ router.get("/subject/:id/details", withAuth, (req, res) => {
 //renderizar página del foro
 router.get("/subject/:id/forum", withAuth, (req, res) => {
     const id = req.params.id;
+    // Redirigir si hay alias (id antiguo => id nuevo)
+    const alias = subjects.getAlias ? subjects.getAlias(id) : null;
+    if (alias) {
+        return res.redirect(`/subject/${encodeURIComponent(alias)}/forum`);
+    }
     const subject = getSubjectById(id); // ✅ usa tu función definida arriba
 
     if (!subject) {
@@ -216,7 +231,11 @@ router.post("/createSubject", withAdmin, (req, res) => {
         const body = req.body.subject || req.body || {};
         if (!body.name) return res.json({ code: 23, error: { message: "Falta nombre" } });
         // autogenerar id, code y title
-        const id = subjects.generateId(body.name);
+        // id = nombre en minúsculas
+        const id = subjects.idFromNameLower(body.name);
+        if (subjects.exists(id)) {
+            return res.json({ code: 21, error: { message: "Ya existe una asignatura con ese id (derivado del nombre)" } });
+        }
         const code = subjects.generateCode(body.name);
         const credits = Math.max(0, Number(body.credits ?? 0) || 0);
         const subject = {
@@ -241,18 +260,16 @@ router.post("/createSubject", withAdmin, (req, res) => {
 });
 
 router.post("/subject/:id/modify", withAdmin, (req, res) => {
-    let code;
-    if (req.body.subject) {
-        const incoming = req.body.subject;
-        // Normalizar créditos >= 0
-        if (incoming) {
-            incoming.credits = Math.max(0, Number(incoming.credits ?? 0) || 0);
-        }
-        code = subjects.modifySubject(incoming);
-    } else {
-        code = 20;
+    if (!req.body.subject) {
+        return res.json({ code: 20 });
     }
-    return res.json({ code });
+    const incoming = req.body.subject;
+    // Normalizar créditos >= 0
+    if (incoming) {
+        incoming.credits = Math.max(0, Number(incoming.credits ?? 0) || 0);
+    }
+    const result = subjects.modifySubjectById(req.params.id, incoming);
+    return res.json({ code: result.code, id: result.id, newCode: result.newCode });
 });
 
 router.post("/subject/:id/delete", withAdmin, (req, res) => {
