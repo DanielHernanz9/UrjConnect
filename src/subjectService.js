@@ -9,7 +9,7 @@ function loadSubject(idOrFile) {
 }
 
 function saveSubject(subject) {
-    fs.writeFileSync(SUBJECTS_DIR + subject.id + ".json", JSON.stringify(subject));
+    fs.writeFileSync(SUBJECTS_DIR + subject.id + ".json", JSON.stringify(subject, null, 2));
 }
 
 function removeSubjectFile(id) {
@@ -18,20 +18,33 @@ function removeSubjectFile(id) {
     } catch (_) {}
 }
 
-// Cargar existentes si la carpeta ya existe
-if (fs.existsSync(SUBJECTS_DIR)) {
+// --- RESETEO A DEFAULTS EN CADA INICIO ---
+// Si quieres que los cambios persistan entre reinicios, comenta la llamada resetToDefaults() al final.
+function ensureSubjectsDir() {
+    if (!fs.existsSync(SUBJECTS_DIR)) {
+        fs.mkdirSync(SUBJECTS_DIR, { recursive: true });
+    }
+}
+
+function resetToDefaults(defaults) {
+    ensureSubjectsDir();
+    // Eliminar todos los .json existentes
     try {
         const files = fs.readdirSync(SUBJECTS_DIR);
-        files.forEach((file) => {
-            if (!file.endsWith(".json")) return;
-            const subject = loadSubject(file);
-            if (subject?.id) SUBJECTS.set(subject.id, subject);
-        });
-    } catch (err) {
-        console.error("Error reading folder:", err);
+        for (const f of files) {
+            if (f.endsWith(".json")) {
+                try { fs.rmSync(SUBJECTS_DIR + f); } catch (_) {}
+            }
+        }
+    } catch (e) {
+        console.error("Error limpiando carpeta de subjects:", e);
     }
-} else {
-    fs.mkdirSync(SUBJECTS_DIR, { recursive: true });
+    // Re-crear desde DEFAULT_SUBJECTS
+    SUBJECTS.clear();
+    for (const s of defaults) {
+        SUBJECTS.set(s.id, s);
+        saveSubject(s);
+    }
 }
 
 // Asegurar foros/asignaturas por defecto (idempotente)
@@ -151,10 +164,11 @@ const DEFAULT_SUBJECTS = [
 ];
 
 DEFAULT_SUBJECTS.forEach((def) => {
-    if (!SUBJECTS.has(def.id)) {
-        addSubject(def);
-    }
+    // no-op here, we'll reset below
 });
+
+// ===== Ejecutar reset cada vez que arranque la app =====
+resetToDefaults(DEFAULT_SUBJECTS);
 
 export function getSubject(id) {
     return SUBJECTS.get(id);

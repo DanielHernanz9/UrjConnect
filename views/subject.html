@@ -62,11 +62,21 @@
                 </div>
 
                 <div class="cta" style="margin-top: 18px; display: flex; gap: 8px">
-                    <button class="link" id="backBtn" onclick="window.history.back()">Volver</button>
+                    <button class="link forum-btn" id="backBtn" type="button" aria-label="Volver al inicio" onclick="window.location.href='/'">Volver al inicio</button>
                     <button class="enter" onclick="window.location.href='/subject/{{subject.id}}/forum'">
                         Entrar al foro
                     </button>
-                    
+                    <!-- NUEVO: botón para abrir editor de asignatura (solo visible a admins) -->
+                    <button class="btn admin-only" id="editSubjectBtn" type="button" aria-haspopup="dialog" aria-controls="editSubjectModal" style="display: none">Editar asignatura</button>
+                </div>
+
+
+                    <form id="deleteForumForm" action="/subject/{{subject.id}}/delete" method="POST" style="display: none; margin: 0;">
+                        <button class="btn forum-btn" type="submit" style="background: var(--accent-2); color: white;" 
+                                onclick="return confirm('¿Estás seguro de que quieres eliminar este foro? Esta acción no se puede deshacer.')">
+                            Eliminar foro
+                        </button>
+                    </form>
                 </div>
             </section>
         </main>
@@ -107,14 +117,414 @@
             </div>
         </div>
 
+        <!-- Modal: Editar asignatura (usa /api/subjects/:id para cargar datos y POST /subject/:id/modify para guardar) -->
+        <div class="modal" id="editSubjectModal" role="dialog" aria-modal="true" aria-labelledby="editSubjectTitle" style="display: none">
+            <div class="content glass">
+                <div class="head" style="display: flex; justify-content: space-between; align-items: center; gap: 12px">
+                    <h3 id="editSubjectTitle" style="margin: 0">Editar asignatura</h3>
+                    <button class="close" data-close="#editSubjectModal">Cerrar</button>
+                </div>
+                <div class="body" style="display: flex; flex-direction: column; gap: 12px">
+                    <form id="editSubjectForm" enctype="multipart/form-data">
+                        <input type="hidden" id="es_id" name="id" value="{{subject.id}}" />
+                        <div class="field">
+                            <label for="es_name">Nombre</label>
+                            <input id="es_name" name="name" type="text" placeholder="Nombre visible" required />
+                        </div>
+                        <div class="field">
+                            <label for="es_desc">Descripción corta</label>
+                            <textarea id="es_desc" name="desc" rows="2" placeholder="Resumen corto"></textarea>
+                        </div>
+                        <div class="field">
+                            <label for="es_long">Descripción larga</label>
+                            <textarea id="es_long" name="description" rows="3" placeholder="Descripción detallada"></textarea>
+                        </div>
+                        <div class="row" style="display: flex; gap: 12px">
+                            <div class="field" style="flex: 1">
+                                <label for="es_credits">Créditos</label>
+                                <input id="es_credits" name="credits" type="number" min="0" />
+                            </div>
+                            <div class="field" style="flex: 1">
+                                <label for="es_prof">Profesor</label>
+                                <input id="es_prof" name="professor" type="text" />
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="es_sched">Horario</label>
+                            <input id="es_sched" name="schedule" type="text" placeholder="Lunes 10:00-12:00" />
+                        </div>
+                        <div class="field">
+                            <label>Color</label>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px">
+                                <div class="swatches" id="es_swatches" aria-hidden="true"></div>
+                                <input id="es_color" name="color" type="color" value="#6366f1" aria-label="Color personalizado" />
+                            </div>
+                            <small class="hint">Elige uno de los colores o usa el selector.</small>
+                        </div>
+                        <div class="field">
+                            <label for="es_iconFile">Icono (opcional)</label>
+                            <input id="es_iconFile" name="iconFile" type="file" accept="image/*" />
+                            <div id="es_currentIcon" style="margin-top:8px"></div>
+                        </div>
+
+                        <div class="actions" style="justify-content: flex-end; gap: 8px; margin-top: 6px">
+                            <button class="btn secondary" type="button" data-close="#editSubjectModal">Descartar</button>
+                            <button class="btn" type="submit" id="saveSubjectBtn">Guardar cambios</button>
+                        </div>
+                        <div class="error" id="editSubjectError" role="alert" aria-live="assertive"></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+        <!-- Inyectar jsonUser (igual que en forum.html) -->
         {{#jsonUser}}
         <script id="__initialUser" type="application/json">
             {{{jsonUser}}}
         </script>
         {{/jsonUser}}
 
+        <script>
+            (function(){
+                const s = document.getElementById('__initialUser');
+                if (!s) return;
+                try {
+                    const user = JSON.parse(s.textContent || s.innerText || '{}');
+                    const isAdmin =
+                        user?.role === 'admin' ||
+                        (Array.isArray(user?.roles) && user.roles.includes('admin')) ||
+                        user?.isAdmin === true ||
+                        user?.admin === true ||
+                        user?.is_role === 'admin';
+                    if (isAdmin) {
+                        document.querySelectorAll('.admin-only').forEach(el => {
+                            // quitar estilo inline que oculta y preservar layout
+                            if (el.hasAttribute('style')) {
+                                const st = el.getAttribute('style').replace(/display:\s*none;?/i, '');
+                                el.setAttribute('style', st.trim());
+                            }
+                            el.style.display = el.style.display || '';
+                        });
+                    }
+                } catch (e) {
+                    // silently ignore parse errors
+                }
+            })();
+        </script>
+
         <script src="/app.js"></script>
+        <script>
+            (function(){
+                const editBtn = document.getElementById('editSubjectBtn');
+                const modal = document.getElementById('editSubjectModal');
+                const closeButtons = modal.querySelectorAll('[data-close]');
+                const form = document.getElementById('editSubjectForm');
+                const errorEl = document.getElementById('editSubjectError');
+                const subjectId = '{{subject.id}}';
+
+                function openModal(){ modal.style.display = 'block'; }
+                function closeModal(){ modal.style.display = 'none'; errorEl.textContent = ''; }
+
+                editBtn && editBtn.addEventListener('click', openModal);
+                closeButtons.forEach(b => b.addEventListener('click', closeModal));
+
+                // Envío de cambios: ajusta la URL si tu backend espera otra ruta
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    errorEl.textContent = '';
+                    const formData = new FormData(form);
+                    // Si quieres enviar archivo como multipart/form-data, descomenta la siguiente solicitud:
+                    try {
+                        const response = await fetch('/subject/' + encodeURIComponent(subjectId) + '/edit', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        if (response.ok) {
+                            // refrescar para ver cambios
+                            window.location.reload();
+                        } else {
+                            const txt = await response.text();
+                            errorEl.textContent = txt || 'Error al guardar los cambios';
+                        }
+                    } catch (err) {
+                        errorEl.textContent = err.message || 'Error de red';
+                    }
+                });
+            })();
+        </script>
+        <script>
+    (function () {
+        const subjectId = document.getElementById('es_id').value || '{{subject.id}}';
+        const apiUrl = '/api/subjects/' + encodeURIComponent(subjectId);
+        const editBtn = document.getElementById('editSubjectBtn');
+        const modal = document.getElementById('editSubjectModal');
+        const closeButtons = modal.querySelectorAll('[data-close]');
+        const form = document.getElementById('editSubjectForm');
+        const err = document.getElementById('editSubjectError');
+        const currentIconWrap = document.getElementById('es_currentIcon');
+
+        function openModal() { modal.style.display = 'block'; err.textContent = ''; }
+        function closeModal() { modal.style.display = 'none'; err.textContent = ''; }
+
+        async function loadSubject() {
+            try {
+                const r = await fetch(apiUrl);
+                if (!r.ok) throw new Error('Error cargando asignatura');
+                const s = await r.json();
+                // Rellenar campos (adapta claves según tu objeto)
+                document.getElementById('es_name').value = s.name ?? s.title ?? '';
+                document.getElementById('es_desc').value = s.desc ?? '';
+                document.getElementById('es_long').value = s.description ?? s.long ?? '';
+                document.getElementById('es_credits').value = s.credits ?? s.credits ?? 0;
+                document.getElementById('es_prof').value = s.professor ?? s.prof ?? s.professor ?? '';
+                document.getElementById('es_sched').value = s.schedule ?? s.sched ?? '';
+                document.getElementById('es_color').value = s.color ?? '#6366f1';
+                currentIconWrap.innerHTML = s.icon ? ('<small>Icono actual:</small><div style="width:48px; height:48px; border-radius:8px; overflow:hidden; margin-top:6px"><img src="' + s.icon + '" style="width:100%;height:100%;object-fit:contain" /></div>') : '';
+            } catch (e) {
+                err.textContent = e.message || 'No se pudo cargar la asignatura';
+            }
+        }
+
+        editBtn && editBtn.addEventListener('click', async () => {
+            await loadSubject();
+            openModal();
+        });
+        closeButtons.forEach(b => b.addEventListener('click', closeModal));
+
+        form.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            err.textContent = '';
+            // Construir objeto subject a enviar (no incluye iconFile — subir icono separado a /uploadIcon)
+            const subject = {
+                id: subjectId,
+                name: document.getElementById('es_name').value.trim(),
+                desc: document.getElementById('es_desc').value.trim(),
+                description: document.getElementById('es_long').value.trim(),
+                credits: Number(document.getElementById('es_credits').value || 0),
+                professor: document.getElementById('es_prof').value.trim(),
+                schedule: document.getElementById('es_sched').value.trim(),
+                color: document.getElementById('es_color').value
+                // icon: leave unchanged or handle via /uploadIcon
+            };
+            try {
+                const r = await fetch('/subject/' + encodeURIComponent(subjectId) + '/modify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subject })
+                });
+                const data = await r.json();
+                if (r.ok && data && (data.code === 0 || data.code === undefined)) {
+                    window.location.reload();
+                } else {
+                    err.textContent = (data && data.message) || (data && data.error && data.error.message) || ('Error al guardar (code=' + (data && data.code) + ')');
+                }
+            } catch (e) {
+                err.textContent = e.message || 'Error de red';
+            }
+        });
+    })();
+</script>
+<script>
+    (function () {
+        const subjectId = document.getElementById('es_id').value || '{{subject.id}}';
+        const apiUrl = '/api/subjects/' + encodeURIComponent(subjectId);
+        const editBtn = document.getElementById('editSubjectBtn');
+        const modal = document.getElementById('editSubjectModal');
+        const closeButtons = modal.querySelectorAll('[data-close]');
+        const form = document.getElementById('editSubjectForm');
+        const err = document.getElementById('editSubjectError');
+        const currentIconWrap = document.getElementById('es_currentIcon');
+        const iconFileInput = document.getElementById('es_iconFile');
+
+        function openModal() { modal.style.display = 'block'; err.textContent = ''; }
+        function closeModal() { modal.style.display = 'none'; err.textContent = ''; }
+
+        async function loadSubject() {
+            try {
+                const r = await fetch(apiUrl);
+                if (!r.ok) throw new Error('Error cargando asignatura');
+                const s = await r.json();
+                document.getElementById('es_name').value = s.name ?? s.title ?? '';
+                document.getElementById('es_desc').value = s.desc ?? '';
+                document.getElementById('es_long').value = s.description ?? s.long ?? '';
+                document.getElementById('es_credits').value = s.credits ?? 0;
+                document.getElementById('es_prof').value = s.professor ?? s.prof ?? '';
+                document.getElementById('es_sched').value = s.schedule ?? s.sched ?? '';
+                // color may be gradient; if not a hex, keep default
+                try {
+                    const color = s.color && s.color.startsWith('#') ? s.color : '#6366f1';
+                    document.getElementById('es_color').value = color;
+                } catch {}
+                currentIconWrap.innerHTML = s.icon ? ('<small>Icono actual:</small><div style="width:48px; height:48px; border-radius:8px; overflow:hidden; margin-top:6px"><img src="' + s.icon + '" style="width:100%;height:100%;object-fit:contain" /></div>') : '';
+            } catch (e) {
+                err.textContent = e.message || 'No se pudo cargar la asignatura';
+            }
+        }
+
+        editBtn && editBtn.addEventListener('click', async () => {
+            await loadSubject();
+            openModal();
+        });
+        closeButtons.forEach(b => b.addEventListener('click', closeModal));
+
+        async function uploadIconIfNeeded() {
+            const file = iconFileInput.files && iconFileInput.files[0];
+            if (!file) return null;
+            const fd = new FormData();
+            fd.append('icon', file);
+            const r = await fetch('/uploadIcon', { method: 'POST', body: fd });
+            if (!r.ok) throw new Error('Error subiendo icono');
+            const j = await r.json();
+            return j.path || null;
+        }
+
+        form.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            err.textContent = '';
+            try {
+                let iconPath = null;
+                if (iconFileInput.files && iconFileInput.files.length > 0) {
+                    iconPath = await uploadIconIfNeeded();
+                }
+                const subject = {
+                    id: subjectId,
+                    name: document.getElementById('es_name').value.trim(),
+                    desc: document.getElementById('es_desc').value.trim(),
+                    description: document.getElementById('es_long').value.trim(),
+                    credits: Number(document.getElementById('es_credits').value || 0),
+                    professor: document.getElementById('es_prof').value.trim(),
+                    schedule: document.getElementById('es_sched').value.trim(),
+                    color: document.getElementById('es_color').value
+                };
+                if (iconPath) subject.icon = iconPath;
+
+                const r = await fetch('/subject/' + encodeURIComponent(subjectId) + '/modify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subject })
+                });
+                const data = await r.json();
+                if (r.ok && (data.code === 0 || data.code === undefined)) {
+                    window.location.reload();
+                } else {
+                    err.textContent = (data && data.message) || (data && data.error && data.error.message) || ('Error al guardar (code=' + (data && data.code) + ')');
+                }
+            } catch (e) {
+                err.textContent = e.message || 'Error de red';
+            }
+        });
+    })();
+</script>
+<script>
+(function(){
+    // Unificar la lógica: cargar subject, mantener icon si no se sube uno nuevo,
+    // subir icon (si se selecciona) y enviar los cambios a /subject/:id/modify.
+    const editBtn = document.getElementById('editSubjectBtn');
+    const modal = document.getElementById('editSubjectModal');
+    const closeButtons = modal ? modal.querySelectorAll('[data-close]') : [];
+    const form = document.getElementById('editSubjectForm');
+    const errorEl = document.getElementById('editSubjectError');
+    const subjectId = '{{subject.id}}';
+    const apiUrl = '/api/subjects/' + encodeURIComponent(subjectId);
+    const currentIconWrap = document.getElementById('es_currentIcon');
+    const iconFileInput = document.getElementById('es_iconFile');
+
+    let currentIconPath = null; // guardaremos aquí la ruta actual del icono
+
+    function openModal(){ if(modal) modal.style.display = 'block'; errorEl && (errorEl.textContent = ''); }
+    function closeModal(){ if(modal) modal.style.display = 'none'; errorEl && (errorEl.textContent = ''); }
+
+    async function loadSubject() {
+        try {
+            const r = await fetch(apiUrl);
+            if (!r.ok) throw new Error('Error cargando asignatura');
+            const s = await r.json();
+            // Rellenar campos
+            document.getElementById('es_id').value = s.id ?? subjectId;
+            document.getElementById('es_name').value = s.name ?? s.title ?? '';
+            document.getElementById('es_desc').value = s.desc ?? '';
+            document.getElementById('es_long').value = s.description ?? s.long ?? '';
+            document.getElementById('es_credits').value = s.credits ?? 0;
+            document.getElementById('es_prof').value = s.professor ?? s.prof ?? '';
+            document.getElementById('es_sched').value = s.schedule ?? s.sched ?? '';
+            try {
+                const color = s.color && s.color.startsWith('#') ? s.color : '#6366f1';
+                document.getElementById('es_color').value = color;
+            } catch {}
+            currentIconPath = s.icon || null;
+            currentIconWrap.innerHTML = currentIconPath ? ('<small>Icono actual:</small><div style="width:48px; height:48px; border-radius:8px; overflow:hidden; margin-top:6px"><img src="' + currentIconPath + '" style="width:100%;height:100%;object-fit:contain" /></div>') : '';
+        } catch (e) {
+            if (errorEl) errorEl.textContent = e.message || 'No se pudo cargar la asignatura';
+        }
+    }
+
+    async function uploadIconIfNeeded() {
+        const file = iconFileInput && iconFileInput.files && iconFileInput.files[0];
+        if (!file) return null;
+        const fd = new FormData();
+        fd.append('icon', file);
+        const r = await fetch('/uploadIcon', { method: 'POST', body: fd });
+        if (!r.ok) throw new Error('Error subiendo icono');
+        const j = await r.json();
+        // asumir { path: "/assets/..." } o similar
+        return j.path || j.url || j.location || null;
+    }
+
+    editBtn && editBtn.addEventListener('click', async () => {
+        await loadSubject();
+        openModal();
+    });
+    closeButtons && closeButtons.forEach(b => b.addEventListener('click', closeModal));
+
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (errorEl) errorEl.textContent = '';
+            try {
+                // subir icono si se seleccionó uno
+                let newIconPath = null;
+                if (iconFileInput && iconFileInput.files && iconFileInput.files.length > 0) {
+                    newIconPath = await uploadIconIfNeeded();
+                }
+
+                // construir objeto a enviar; si no hay nuevo icono, usar currentIconPath
+                const subject = {
+                    id: subjectId,
+                    name: document.getElementById('es_name').value.trim(),
+                    desc: document.getElementById('es_desc').value.trim(),
+                    description: document.getElementById('es_long').value.trim(),
+                    credits: Number(document.getElementById('es_credits').value || 0),
+                    professor: document.getElementById('es_prof').value.trim(),
+                    schedule: document.getElementById('es_sched').value.trim(),
+                    color: document.getElementById('es_color').value
+                };
+                if (newIconPath) {
+                    subject.icon = newIconPath;
+                } else if (currentIconPath) {
+                    // mantener el icono anterior si no se sube uno nuevo
+                    subject.icon = currentIconPath;
+                }
+
+                const r = await fetch('/subject/' + encodeURIComponent(subjectId) + '/modify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subject })
+                });
+
+                const data = await r.json().catch(() => null);
+                if (r.ok && (!data || data.code === 0 || data.code === undefined)) {
+                    window.location.reload();
+                } else {
+                    if (errorEl) errorEl.textContent = (data && (data.message || data.error)) || ('Error al guardar (code=' + (data && data.code) + ')');
+                }
+            } catch (err) {
+                if (errorEl) errorEl.textContent = err.message || 'Error de red';
+            }
+        });
+    }
+})();
+</script>
     </body>
 </html>
