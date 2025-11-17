@@ -848,11 +848,17 @@ input[type="color"] {
 .modal {
     position: fixed;
     inset: 0;
-    display: none;
-    place-items: center;
+    display: none; /* oculto por defecto; se muestra al añadir la clase .show */
     background: rgba(0, 0, 0, 0.45);
     z-index: 20;
     padding: 18px;
+}
+/* Mostrar modal: usar la clase .show (evita depender de estilos inline inesperados) */
+.modal.show {
+    display: grid;
+    align-items: center; /* centrado vertical */
+    justify-items: center; /* centrado horizontal */
+    place-items: center;
 }
 .modal .content {
     width: min(720px, 95vw);
@@ -860,6 +866,7 @@ input[type="color"] {
     padding: 18px;
     display: flex; /* Permite que el cuerpo sea scrollable */
     flex-direction: column;
+    margin: 0 auto; /* asegurar centrado del contenido */
 }
 .modal .head {
     display: flex;
