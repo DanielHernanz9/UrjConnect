@@ -340,7 +340,6 @@ router.post("/changePassword", withAuth, (req, res) => {
             msg: "La nueva contraseña debe tener al menos 6 caracteres",
         });
     }
-    console.log("Hola");
 
     // Verificar contraseña actual
     if (user.isPassword(oldPassword)) {
