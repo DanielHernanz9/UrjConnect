@@ -249,6 +249,14 @@ label {
     outline: none;
     width: 100%;
 }
+/* Mostrar claramente los campos deshabilitados */
+.field input:disabled,
+.field textarea:disabled,
+.field select:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    filter: grayscale(20%);
+}
 /* Password reveal UI */
 .field .pw-wrap {
     position: relative;
