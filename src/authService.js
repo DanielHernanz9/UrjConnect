@@ -9,7 +9,7 @@ export function login(email, password) {
         return user;
     }
     const token = generateRandomToken();
-    sessions.set(token, user);
+    sessions.set(token, email);
     return token;
 }
 
@@ -19,12 +19,16 @@ export function register(email, password, name, bio) {
         return user;
     }
     const token = generateRandomToken()
-    sessions.set(token, user);
+    sessions.set(token, email);
     return token;
 }
 
 export function authenticate(token) {
-    return sessions.get(token);
+    const email = sessions.get(token);
+    if (email) {
+        return User.getFromFile(email);
+    }
+    return undefined;
 }
 
 function generateRandomToken() {
