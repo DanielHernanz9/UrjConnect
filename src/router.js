@@ -332,6 +332,17 @@ router.post("/changePassword", withAuth, (req, res) => {
     const user = req.user;
     const oldPassword = req.body.oldPassword;
     const newPassword = req.body.newPassword;
+
+    // Validar longitud mínima
+    if (!newPassword || newPassword.length < 6) {
+        return res.json({
+            code: 5, // Contraseña demasiado corta
+            msg: "La nueva contraseña debe tener al menos 6 caracteres",
+        });
+    }
+    console.log("Hola");
+
+    // Verificar contraseña actual
     if (user.isPassword(oldPassword)) {
         user.changePassword(newPassword);
         return res.json({

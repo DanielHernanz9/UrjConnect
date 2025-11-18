@@ -991,6 +991,10 @@ if (passwordForm) {
             toast("Debes ingresar una nueva contraseña");
             return;
         }
+        if (newPassword.length < 6) {
+            toast("La nueva contraseña debe tener al menos 6 caracteres");
+            return;
+        }
 
         if (!confirmar) {
             toast("Debes confirmar la nueva contraseña");
