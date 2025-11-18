@@ -292,20 +292,28 @@ export function modifySubjectById(oldId, incoming) {
     const updated = { ...prev, ...(incoming || {}) };
     const nextName = updated.name ?? prev.name;
     const nameChanged = nextName !== prev.name;
-    const desiredId = idFromNameLower(nextName);
 
-    // Si el id deseado existe y no es el mismo registro, conflicto
+    // Usar el nombre en minúsculas y reemplazar espacios por '_' como id
+    let desiredId = (nextName || "").toLowerCase().trim().replace(/\s+/g, '_') || "asignatura";
+
+    // Si el id deseado ya existe y no es el actual, generar variante única manteniendo '_' y añadiendo sufijo _2, _3, ...
     if (desiredId !== oldId && SUBJECTS.has(desiredId)) {
-        return { code: 21 }; // ya existe
+        let i = 2;
+        let candidate = `${desiredId}_${i}`;
+        while (SUBJECTS.has(candidate)) {
+            i++;
+            candidate = `${desiredId}_${i}`;
+        }
+        desiredId = candidate;
     }
 
-    // Si cambió el nombre, regenerar también el code basado en el nuevo nombre
+    // Regenerar código si cambia el nombre
     if (nameChanged) {
         updated.code = generateCode(nextName);
     }
 
     if (desiredId !== oldId) {
-        // Renombrar: guardar con nuevo id y borrar fichero viejo
+        // Renombrar: asignar nuevo id, guardar, borrar archivo viejo y crear alias
         updated.id = desiredId;
         SUBJECTS.delete(oldId);
         SUBJECTS.set(desiredId, updated);
@@ -314,7 +322,7 @@ export function modifySubjectById(oldId, incoming) {
         setAlias(oldId, desiredId);
         return { code: 0, id: desiredId, newCode: updated.code };
     } else {
-        // El id no cambia, solo actualizar
+        // Sin cambio de id: solo actualizar
         updated.id = oldId;
         SUBJECTS.set(oldId, updated);
         saveSubject(updated);
