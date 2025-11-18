@@ -125,6 +125,7 @@ router.post("/register", (req, res) => {
 
 router.post("/updateUser", withAuth, (req, res) => {
     const user = req.user;
+    const oldName = user.name;
     if (req.body.name) {
         user.setName(req.body.name);
     }
@@ -133,6 +134,14 @@ router.post("/updateUser", withAuth, (req, res) => {
     }
     if ("color" in req.body) {
         user.setColor(req.body.color);
+    }
+    // Actualizar retroactivamente posts del usuario para que otros vean el perfil nuevo
+    try {
+        const updated = forum.updatePostsForUser(user.email, { userName: user.name, userColor: user.color }, oldName);
+        return res.json({ code: 0, updatedPosts: updated });
+    } catch (e) {
+        console.error('Error updating forum posts for user:', e);
+        return res.json({ code: 0, updatedPosts: 0 });
     }
 });
 
@@ -251,6 +260,7 @@ router.post("/subject/:id/forum/post", withAuth, (req, res) => {
         title: String(title).trim().slice(0, 140),
         content: String(content).trim().slice(0, 5000),
         userName: req.user.name || req.user.email,
+        userEmail: req.user.email,
         userColor: req.user.color || "#6366f1",
         timestamp: new Date().toISOString(),
     };

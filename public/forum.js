@@ -136,16 +136,23 @@ const forumApp = {
         }
 
         container.innerHTML = "";
+        // Obtener sesión local para poder sustituir nombre/color si el post es nuestro
+        const session = store.getSession();
         messages.forEach((msg) => {
+            const isMine = session && msg.userEmail && session.email && msg.userEmail === session.email;
+            //Si tengo iniciada la sesión, muestro mi nombre y color actual, sino muestra los datos guardados al enviar el mensaje
+            const displayName = isMine ? session.name || session.email : msg.userName;
+            const displayColor = isMine ? session.color || msg.userColor : msg.userColor;
+
             const messageEl = document.createElement("div");
             messageEl.className = "post";
             messageEl.innerHTML = `
                 <div class="post-header" style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px">
-                    <div class="avatar" style="width: 32px; height: 32px; border-radius: 8px; background: ${msg.userColor || "#6366f1"}; display: grid; place-items: center; color: #0b0e12; font-weight: 900; font-size: 14px">
-                        ${initialsOf(msg.userName)}
+                    <div class="avatar" style="width: 32px; height: 32px; border-radius: 8px; background: ${displayColor || "#6366f1"}; display: grid; place-items: center; color: #0b0e12; font-weight: 900; font-size: 14px">
+                        ${initialsOf(displayName)}
                     </div>
                     <div style="flex: 1">
-                        <div style="font-weight: 700; font-size: 15px">${msg.userName}</div>
+                        <div style="font-weight: 700; font-size: 15px">${this.escapeHtml(displayName)}</div>
                         <div style="font-size: 12px; color: var(--muted)">${new Date(msg.timestamp).toLocaleString()}</div>
                     </div>
                 </div>

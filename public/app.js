@@ -578,6 +578,16 @@ const app = {
             this.el.avatarInitials.textContent = initialsOf(this.user.name || this.user.email);
             toast("Perfil actualizado");
             modals.close("#profileModal");
+            // Persistir sesión actualizada en sessionStorage
+            try {
+                store.setSession(JSON.stringify(this.user));
+            } catch (e) {}
+            // Si el foro está abierto, volver a renderizar los posts
+            try {
+                if (typeof forum !== "undefined" && forum.subject) forum.renderPosts();
+            } catch (e) {
+                // no bloquear si algo falla aquí
+            }
         });
 
         // Logout
