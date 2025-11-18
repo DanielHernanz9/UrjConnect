@@ -353,3 +353,26 @@ router.post("/changePassword", withAuth, (req, res) => {
         code: 2,
     });
 });
+// DELETE mensaje por id (autor o administradores)
+router.delete('/api/messages/:id', withAuth, async (req, res) => {
+  const messageId = req.params.id;
+  try {
+    const found = forum.findMessageById(messageId);
+    if (!found || !found.post) return res.status(404).json({ error: 'Not found' });
+
+    const post = found.post;
+    const user = req.user || null;
+    const isAdmin = user ? (user.isAdmin === true || user.role === 'admin') : false;
+    const isOwner = user && (post.userName === user.name || post.userEmail === user.email);
+
+    if (!isAdmin && !isOwner) return res.status(403).json({ error: 'Forbidden' });
+
+    const deleted = forum.deleteMessage(messageId);
+    if (!deleted) return res.status(404).json({ error: 'Not found' });
+
+    res.json({ success: true, deleted });
+  } catch (err) {
+    console.error('Error deleting message:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});

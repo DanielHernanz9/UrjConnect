@@ -146,6 +146,7 @@ const forumApp = {
 
             const messageEl = document.createElement("div");
             messageEl.className = "post";
+            messageEl.dataset.messageId = msg.id;
             messageEl.innerHTML = `
                 <div class="post-header" style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px">
                     <div class="avatar" style="width: 32px; height: 32px; border-radius: 8px; background: ${displayColor || "#6366f1"}; display: grid; place-items: center; color: #0b0e12; font-weight: 900; font-size: 14px">
@@ -155,6 +156,7 @@ const forumApp = {
                         <div style="font-weight: 700; font-size: 15px">${this.escapeHtml(displayName)}</div>
                         <div style="font-size: 12px; color: var(--muted)">${new Date(msg.timestamp).toLocaleString()}</div>
                     </div>
+                    ${ (this.user && this.user.role === "admin") ? `<button class="btn-delete-post" data-id="${msg.id}" title="Borrar">Borrar</button>` : '' }
                 </div>
                 <div class="post-title" style="font-weight: 700; font-size: 16px; margin-bottom: 8px">${this.escapeHtml(msg.title)}</div>
                 <div class="post-content" style="white-space: pre-wrap; line-height: 1.6">${this.escapeHtml(msg.content)}</div>
@@ -284,6 +286,44 @@ const forumApp = {
             } catch (err) {
                 console.error(err);
                 toast("No se pudo publicar el mensaje");
+            }
+        });
+
+        // Delegación para borrar posts (copiado de UrjConnect-6)
+        this.el.postsContainer?.addEventListener('click', async (e) => {
+            const btn = e.target.closest && e.target.closest('.btn-delete-post');
+            if (!btn) return;
+            const id = btn.dataset.id;
+            if (!id) return;
+            if (!confirm('¿Deseas borrar este mensaje?')) return;
+
+            try {
+                const res = await fetch(`/api/messages/${encodeURIComponent(id)}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+                if (res.status === 403) {
+                    toast('No tienes permisos para borrar este mensaje');
+                    return;
+                }
+                if (res.status === 404) {
+                    toast('Mensaje no encontrado');
+                    // opcional: eliminar del DOM
+                    const postEl = btn.closest('.post');
+                    if (postEl) postEl.remove();
+                    return;
+                }
+                if (!res.ok) {
+                    toast('Error al borrar el mensaje');
+                    return;
+                }
+                // borrar del DOM
+                const postEl = btn.closest('.post');
+                if (postEl) postEl.remove();
+                toast('Mensaje borrado');
+            } catch (err) {
+                console.error('Error borrando mensaje', err);
+                toast('Error al borrar el mensaje');
             }
         });
 
