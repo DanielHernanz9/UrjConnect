@@ -351,26 +351,21 @@ const app = {
             authUI.showAuth();
             return;
         }
-
-        // Theme
         document.documentElement.setAttribute("data-theme", store.getTheme());
-
-        // Header info
         this.el.profileName.textContent = this.user.name || "Tu Nombre";
         this.el.avatar.style.background = store.getColor();
         this.el.avatarInitials.textContent = initialsOf(this.user.name || this.user.email);
-
-        // Admin UI
         if (this.user.role === "admin" && this.el.btnOpenCreateSubject) {
             this.el.btnOpenCreateSubject.style.display = "inline-flex";
         }
-
-        // Favorites UI
+        // Render favoritos solo si existe el grid (páginas como editPassword no lo tienen)
         this.renderFavDropdown();
         this.renderChips();
-        // Cards
+        if (!this.el.cardsGrid) { // ← guard: no hay área de tarjetas en esta página
+            authUI.showApp();
+            return;
+        }
         this.renderCards();
-
         authUI.showApp();
     },
 
@@ -402,14 +397,11 @@ const app = {
     },
 
     renderChips() {
-        const { chipsRow } = this.el;
+        const chipsRow = this.el.chipsRow;
+        if (!chipsRow) return; // ← guard: página sin chips/favoritos
         chipsRow.innerHTML = "";
         const favs = store.getFavourites();
-        if (!favs || favs.length === 0) {
-            // No mostrar mensaje cuando no hay favoritos: dejamos el contenedor vacío
-            return;
-        }
-
+        if (!favs || favs.length === 0) return;
         favs.forEach((id) => {
             const subj = SUBJECTS.find((s) => s.id === id);
             if (!subj) return;
@@ -418,13 +410,7 @@ const app = {
             if (this.activeChipId === id) chip.classList.add("selected");
             chip.innerHTML = `⭐ ${subj.name}`;
             chip.addEventListener("click", () => {
-                if (this.activeChipId === id) {
-                    // Quitar filtro individual
-                    this.activeChipId = null;
-                } else {
-                    // Activar filtro por este favorito
-                    this.activeChipId = id;
-                }
+                this.activeChipId = this.activeChipId === id ? null : id;
                 this.renderChips();
                 this.renderCards();
             });
@@ -435,25 +421,18 @@ const app = {
     /* ---------- Cards ---------- */
     renderCards(filterById) {
         const g = this.el.cardsGrid;
+        if (!g) return; // ← guard: página sin grid (ej. editPassword)
         g.innerHTML = "";
         const q = (this.el.search?.value || "").toLowerCase().trim();
-
         const chipFilter = filterById !== undefined ? filterById : this.activeChipId;
         let list = SUBJECTS.filter((s) => !chipFilter || s.id === chipFilter);
-        // If the app is in 'only favorites' mode, filter accordingly
-        if (this.onlyFavs) {
-            list = list.filter((s) => this.isFav(s.id));
-        }
-        if (q) {
-            list = list.filter((s) => s.name.toLowerCase().includes(q));
-        }
-        // Orden: favoritos primero
+        if (this.onlyFavs) list = list.filter((s) => this.isFav(s.id));
+        if (q) list = list.filter((s) => s.name.toLowerCase().includes(q));
         list.sort((a, b) => {
             const af = this.isFav(a.id) ? 0 : 1;
             const bf = this.isFav(b.id) ? 0 : 1;
             return af - bf || a.name.localeCompare(b.name, "es");
         });
-
         if (list.length === 0) {
             const empty = document.createElement("div");
             empty.className = "hint";
@@ -462,7 +441,6 @@ const app = {
             g.appendChild(empty);
             return;
         }
-
         const tpl = $("#cardTemplate");
         list.forEach((s) => {
             const node = tpl.content.firstElementChild.cloneNode(true);
@@ -470,48 +448,29 @@ const app = {
             $("[data-desc]", node).textContent = s.desc;
             const icon = $("[data-bg]", node);
             icon.style.background = s.color;
-
-            // Si la asignatura tiene un icono definido, lo mostramos
-            if (s.icon) {
-                icon.innerHTML = `<img src="${s.icon}" alt="Icono ${s.name} "/>`;
-            }
-
-            // ⭐ Botón activo: toggle favorito por card
+            if (s.icon) icon.innerHTML = `<img src="${s.icon}" alt="Icono ${s.name} "/>`;
             const favBtn = $("[data-fav]", node);
             const updateFavVisual = () => {
                 favBtn.textContent = this.isFav(s.id) ? "★" : "☆";
                 favBtn.classList.toggle("active", this.isFav(s.id));
             };
             updateFavVisual();
-            favBtn.removeAttribute("disabled");
-            favBtn.removeAttribute("aria-disabled");
-            favBtn.setAttribute("aria-label", this.isFav(s.id) ? "Quitar de favoritos" : "Marcar como favorito");
             favBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
                 this.toggleFav(s.id);
                 updateFavVisual();
             });
-
             const detailsBtn = $("[data-details]", node);
-            const enterBtn = $("[data-enter]", node);
-            // No modificamos atributos disabled aquí; los botones en la plantilla
-            // no deben incluir disabled por defecto. Solo añadimos handlers.
-            detailsBtn.setAttribute("aria-label", `Detalles de ${s.name}`);
             detailsBtn.addEventListener("click", (e) => {
-                e.preventDefault(); // ← esto evita la recarga
+                e.preventDefault();
                 e.stopPropagation();
                 window.location.href = `/subject/${encodeURIComponent(s.id)}/details`;
             });
-
-            enterBtn.setAttribute("aria-label", `Entrar al foro de ${s.name}`);
+            const enterBtn = $("[data-enter]", node);
             enterBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
-
                 window.location.href = `/subject/${encodeURIComponent(s.id)}/forum`;
             });
-
-            // Hover visual handled by CSS. JavaScript no longer modifies transform on mouse events.
-
             g.appendChild(node);
         });
     },
@@ -1052,7 +1011,7 @@ async function loadSubjects() {
     }
 }
 
-// cargar asignaturas y luego inicializar la app / hidratar página de detalles
+// cargar asignaturas y luego inicializar la app (sin hidratación de detalles)
 loadSubjects()
     .then(() => {
         if (store.getSession()) {
@@ -1061,42 +1020,11 @@ loadSubjects()
         } else {
             if (authUI.authSection) authUI.showAuth();
         }
-
-        // Hidratar la página de detalles si corresponde
-        (async function hydrateSubjectDetailsFromClient() {
-            const m = location.pathname.match(/^\/subject\/([^/]+)\/details\/?$/);
-            if (!m) return;
-            const id = decodeURIComponent(m[1]);
-            const subject = await getSubjectByIdClient(id);
-            const elTitle = document.getElementById("subjectTitle");
-            const elCode = document.getElementById("subjectCode");
-            const elDesc = document.getElementById("subjectDescription");
-            const elCredits = document.getElementById("subjectCredits");
-            const elProfessor = document.getElementById("subjectProfessor");
-            const elSchedule = document.getElementById("subjectSchedule");
-            const elIcon = document.getElementById("subjectIcon");
-
-            if (elTitle) elTitle.textContent = subject.name || subject.title || "";
-            if (elCode && subject.code) elCode.textContent = subject.code;
-            if (elDesc) elDesc.textContent = subject.desc || subject.desc || "";
-            if (elCredits && subject.credits != null) elCredits.textContent = String(subject.credits);
-            if (elProfessor && subject.professor) elProfessor.textContent = subject.professor;
-            if (elSchedule && subject.schedule) elSchedule.textContent = subject.schedule;
-            if (elIcon) {
-                if (subject.icon) {
-                    if (elIcon.tagName === "IMG") elIcon.src = subject.icon;
-                    else elIcon.innerHTML = `<img src="${subject.icon}" alt="Icono ${subject.name}">`;
-                } else {
-                    elIcon.style.display = "none";
-                }
-            }
-
-            if (subject.name) document.title = `${subject.name} — Detalles`;
-        })();
+        // Hidratación cliente eliminada: confiamos en render del servidor
+        // (bloque hydrateSubjectDetailsFromClient removido)
     })
     .catch((err) => {
         console.error(err);
-        // fallback: inicializar UI aunque no se hayan cargado subjects
         if (store.getSession()) {
             app.init();
             authUI.showApp();
