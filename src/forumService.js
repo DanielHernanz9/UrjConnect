@@ -83,3 +83,55 @@ export function updatePostsForUser(email, updates = {}, oldName = null) {
   });
   return total;
 }
+
+// === Nuevas funciones (copiadas de UrjConnect-6) ===
+
+/**
+ * Buscar un mensaje por su id en todos los ficheros de FORUM_DIR.
+ * Devuelve { post, file, index, posts } o null si no se encuentra.
+ */
+export function findMessageById(messageId) {
+  ensureDir();
+  const files = fs.readdirSync(FORUM_DIR).filter(f => f.endsWith('.json'));
+  for (const f of files) {
+    const full = path.join(FORUM_DIR, f);
+    try {
+      const raw = fs.readFileSync(full, 'utf8');
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) continue;
+      const idx = arr.findIndex(p => p && String(p.id) === String(messageId));
+      if (idx !== -1) {
+        return { post: arr[idx], file: full, index: idx, posts: arr };
+      }
+    } catch (e) {
+      // ignorar ficheros inválidos
+      continue;
+    }
+  }
+  return null;
+}
+
+/**
+ * Elimina un mensaje por id. Devuelve el mensaje eliminado o null.
+ */
+export function deleteMessage(messageId) {
+  ensureDir();
+  const files = fs.readdirSync(FORUM_DIR).filter(f => f.endsWith('.json'));
+  for (const f of files) {
+    const full = path.join(FORUM_DIR, f);
+    try {
+      const raw = fs.readFileSync(full, 'utf8');
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) continue;
+      const idx = arr.findIndex(p => p && String(p.id) === String(messageId));
+      if (idx !== -1) {
+        const [deleted] = arr.splice(idx, 1);
+        fs.writeFileSync(full, JSON.stringify(arr, null, 2), 'utf8');
+        return deleted;
+      }
+    } catch (e) {
+      continue;
+    }
+  }
+  return null;
+}
