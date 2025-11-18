@@ -2,6 +2,7 @@ import express, { json } from "express";
 import multer from "multer";
 import * as auth from "./authService.js";
 import * as subjects from "./subjectService.js";
+import * as forum from "./forumService.js";
 
 const router = express.Router();
 // Configuración de subida de iconos a /public/assets
@@ -182,6 +183,18 @@ router.get("/api/subjects/:id", (req, res) => {
     res.json(s);
 });
 
+// API: obtener mensajes del foro de una asignatura
+router.get("/api/subjects/:id/posts", withAuth, (req, res) => {
+    const id = req.params.id;
+    const alias = subjects.getAlias ? subjects.getAlias(id) : null;
+    const subject = getSubjectById(alias || id);
+    if (!subject || subject.title === "Asignatura no encontrada") {
+        return res.status(404).json({ error: { code: "NOT_FOUND" } });
+    }
+    const posts = forum.getPosts(subject.id).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    res.json(posts);
+});
+
 //renderizar pagina de detalles de la asignatura
 router.get("/subject/:id/details", withAuth, (req, res) => {
     const id = req.params.id;
@@ -216,6 +229,34 @@ router.get("/subject/:id/forum", withAuth, (req, res) => {
     const jsonUser = req.user.toJson();
 
     res.render("forum", { subject, jsonUser });
+});
+
+// Publicar un mensaje en el foro de una asignatura
+router.post("/subject/:id/forum/post", withAuth, (req, res) => {
+    const id = req.params.id;
+    const alias = subjects.getAlias ? subjects.getAlias(id) : null;
+    const subject = getSubjectById(alias || id);
+    if (!subject || subject.title === "Asignatura no encontrada") {
+        return res.status(404).json({ error: { code: "NOT_FOUND", message: "Asignatura no encontrada" } });
+    }
+
+    const { title, content } = req.body || {};
+    if (!title || !content) {
+        return res.status(400).json({ error: { code: "BAD_REQUEST", message: "Faltan campos" } });
+    }
+
+    const post = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+        subjectId: subject.id,
+        title: String(title).trim().slice(0, 140),
+        content: String(content).trim().slice(0, 5000),
+        userName: req.user.name || req.user.email,
+        userColor: req.user.color || "#6366f1",
+        timestamp: new Date().toISOString(),
+    };
+
+    forum.addPost(subject.id, post);
+    res.status(201).json(post);
 });
 
 export default router;

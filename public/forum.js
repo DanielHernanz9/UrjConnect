@@ -112,9 +112,10 @@ const forumApp = {
 
             this.subject = await response.json();
 
-            // Aquí se cargarían los mensajes del foro desde el servidor
-            // Por ahora mostramos el placeholder
-            this.renderMessages([]);
+            // Cargar mensajes del foro
+            const rPosts = await fetch(`/api/subjects/${this.subject.id}/posts`);
+            const messages = rPosts.ok ? await rPosts.json() : [];
+            this.renderMessages(messages);
         } catch (err) {
             console.error("Error cargando datos del foro:", err);
             toast("Error al cargar el foro");
@@ -247,10 +248,36 @@ const forumApp = {
             document.documentElement.setAttribute("data-theme", next);
         });
 
-        // Form submit (sin implementación, solo prevenir envío)
-        this.el.newMessageForm?.addEventListener("submit", (e) => {
+        // Form submit: publicar mensaje
+        this.el.newMessageForm?.addEventListener("submit", async (e) => {
             e.preventDefault();
-            toast("La funcionalidad de publicar mensajes aún no está implementada");
+            const form = this.el.newMessageForm;
+            const title = (form.title?.value || "").trim();
+            const content = (form.content?.value || "").trim();
+            if (!title || !content) {
+                toast("Rellena título y contenido");
+                return;
+            }
+            try {
+                const res = await fetch(`/subject/${encodeURIComponent(this.subject.id)}/forum/post`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ title, content }),
+                });
+                if (!res.ok) throw new Error("Error publicando");
+                const created = await res.json();
+                // Añadir al inicio y re-renderizar
+                const current = Array.from(this.el.postsContainer.querySelectorAll('.post')).length > 0 ? [] : null;
+                // Recargar lista completa para mantener orden desde server
+                const rPosts = await fetch(`/api/subjects/${this.subject.id}/posts`);
+                const messages = rPosts.ok ? await rPosts.json() : [];
+                this.renderMessages(messages);
+                form.reset();
+                toast("Mensaje publicado");
+            } catch (err) {
+                console.error(err);
+                toast("No se pudo publicar el mensaje");
+            }
         });
 
         // Close modals
