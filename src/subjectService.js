@@ -259,6 +259,17 @@ export function deleteSubject(id) {
         }
     }
 
+    // Eliminar JSON de mensajes del foro asociado (data/forums/<id>.json)
+    try {
+        const forumsDir = path.join("data", "forums");
+        const forumFile = path.join(forumsDir, `${id}.json`);
+        if (fs.existsSync(forumFile)) {
+            fs.unlinkSync(forumFile);
+        }
+    } catch (err) {
+        console.error("Error deleting forum messages file for subject", id, err);
+    }
+
     SUBJECTS.delete(id);
     removeSubjectFile(id);
 }
@@ -294,7 +305,7 @@ export function modifySubjectById(oldId, incoming) {
     const nameChanged = nextName !== prev.name;
 
     // Usar el nombre en minúsculas y reemplazar espacios por '_' como id
-    let desiredId = (nextName || "").toLowerCase().trim().replace(/\s+/g, '_') || "asignatura";
+    let desiredId = (nextName || "").toLowerCase().trim().replace(/\s+/g, "_") || "asignatura";
 
     // Si el id deseado ya existe y no es el actual, generar variante única manteniendo '_' y añadiendo sufijo _2, _3, ...
     if (desiredId !== oldId && SUBJECTS.has(desiredId)) {
