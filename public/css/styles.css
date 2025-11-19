@@ -249,14 +249,6 @@ label {
     outline: none;
     width: 100%;
 }
-/* Mostrar claramente los campos deshabilitados */
-.field input:disabled,
-.field textarea:disabled,
-.field select:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    filter: grayscale(20%);
-}
 /* Password reveal UI */
 .field .pw-wrap {
     position: relative;
@@ -1189,6 +1181,26 @@ input[type="color"] {
 
 .post {
     animation: slideIn 0.3s ease-out;
+}
+
+/* Estilo para el botón de borrar mensaje por administradores
+   Similar al botón "Eliminar foro" (fondo accent, texto blanco, tamaño reducido) */
+.post-header .btn-delete-post {
+    border: 0;
+    background: var(--accent-2);
+    color: white;
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform var(--speed) ease, box-shadow var(--speed) ease, opacity var(--speed) ease;
+    box-shadow: 0 8px 25px rgba(202, 16, 46, 0.12);
+    opacity: 0.95;
+}
+.post-header .btn-delete-post:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 30px rgba(202, 16, 46, 0.18);
+    opacity: 1;
 }
 
 /* Respetar preferencias de movimiento reducido */
