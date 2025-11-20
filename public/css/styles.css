@@ -867,6 +867,9 @@ input[type="color"] {
     display: flex; /* Permite que el cuerpo sea scrollable */
     flex-direction: column;
     margin: 0 auto; /* asegurar centrado del contenido */
+    /* Evitar que el grid parent estire el modal: dejar que su altura sea la del contenido */
+    align-self: center;
+    height: auto;
 }
 .modal .head {
     display: flex;
