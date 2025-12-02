@@ -9,7 +9,7 @@ if (!fs.existsSync(USERS_DIR)) {
 }
 
 export default class User {
-    constructor(email, password, name, bio, color, favourites, role) {
+    constructor(email, password, name, bio, color, favourites, role, banned = false) {
         this.email = email
         this.password = password
         this.name = name
@@ -17,6 +17,7 @@ export default class User {
         this.color = color
         this.favourites = favourites
         this.role = role
+        this.banned = !!banned
     }
 
     isRole(role) {
@@ -25,6 +26,15 @@ export default class User {
 
     toJson() {
         return JSON.stringify(this, (key, value) => key === "password" ? undefined : key === "favourites" ? Array.from(value) : value);
+    }
+
+    isBanned() {
+        return !!this.banned;
+    }
+
+    setBanned(flag) {
+        this.banned = flag;
+        this.saveToFile();
     }
 
     getEmail() {
@@ -81,7 +91,7 @@ export default class User {
             return 11;
         }
         const hashedPassword = bcrypt.hashSync(password, 10)
-        const o = new User(email, hashedPassword, name, bio, DEFAULT_COLOR, new Set(), "user");
+        const o = new User(email, hashedPassword, name, bio, DEFAULT_COLOR, new Set(), "user", false);
         o.saveToFile();
         return o;
     }
@@ -109,6 +119,6 @@ export default class User {
             return 1
         }
         const json = JSON.parse(fs.readFileSync(USERS_DIR + email));
-        return new User(json.email, json.password, json.name, json.bio, json.color, new Set(json.favourites), json.role);
+        return new User(json.email, json.password, json.name, json.bio, json.color, new Set(json.favourites), json.role, json.banned ?? false);
     }
 }

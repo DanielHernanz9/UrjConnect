@@ -66,9 +66,16 @@ function withAdmin(req, res, next) {
 router.get("/", (req, res) => {
     if (req.cookies && req.cookies.session_id) {
         const user = auth.authenticate(req.cookies.session_id);
+        
         if (user) {
+           
             const jsonUser = user.toJson();
-            res.render("index", { jsonUser });
+            if (user.isBanned()){
+                res.render("banned", { jsonUser });
+            }else{
+                res.render("index", { jsonUser });
+            }
+           
             return;
         }
     }
