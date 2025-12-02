@@ -435,7 +435,21 @@ router.delete('/api/messages/:messageId/reply/:replyId', withAuth, async (req, r
     // Si no es admin y es una respuesta directa (sin replyToUser), verificar que no haya respuestas a ella
     if (!isAdmin && !reply.replyToUser) {
       const replies = found.post.replies || [];
-      const hasChildReplies = replies.some(r => r.replyToUser === reply.userName && r.id !== replyId);
+      // Verificar si hay respuestas que apunten a esta respuesta específica
+      const hasChildReplies = replies.some(r => {
+        if (r.id === replyId) return false; // No contar la misma respuesta
+        // Verificar por replyToId (nuevo sistema) - debe coincidir con el ID de esta respuesta
+        if (r.replyToId && r.replyToId === replyId) return true;
+        // Para sistema antiguo sin replyToId, solo contar si el nombre coincide Y es una respuesta
+        // que lógicamente debería pertenecer a este hilo (verificar timestamp)
+        if (!r.replyToId && r.replyToUser === reply.userName) {
+          // Solo contar si la respuesta es posterior a esta
+          if (new Date(r.timestamp) > new Date(reply.timestamp)) {
+            return true;
+          }
+        }
+        return false;
+      });
       
       if (hasChildReplies) {
         return res.status(400).json({ error: 'No puedes borrar esta respuesta porque hay otras respuestas dirigidas a ella' });
