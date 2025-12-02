@@ -142,6 +142,29 @@
             </div>
         </div>
 
+        <!-- Modal de responder -->
+        <div class="modal" id="replyModal" role="dialog" aria-modal="true" aria-labelledby="replyTitle">
+            <div class="content glass">
+                <div class="body">
+                    <h3 id="replyTitle" style="margin: 0 0 8px 0">Responder mensaje</h3>
+                    <small class="hint" id="replyToHint">Respondiendo a...</small>
+                    <form id="replyForm">
+                        <input type="hidden" id="replyMessageId" />
+                        <input type="hidden" id="replyToUser" />
+                        <input type="hidden" id="replyToId" />
+                        <div class="field" style="margin-top: 12px">
+                            <label for="replyContent">Tu respuesta</label>
+                            <textarea id="replyContent" name="content" rows="4" placeholder="Escribe tu respuesta..." required></textarea>
+                        </div>
+                        <div class="actions" style="justify-content: flex-end">
+                            <button class="btn" type="submit">Enviar respuesta</button>
+                            <button class="btn secondary" type="button" data-close="#replyModal">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
         {{#jsonUser}}

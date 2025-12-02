@@ -135,3 +135,71 @@ export function deleteMessage(messageId) {
   }
   return null;
 }
+
+/**
+ * Añade una respuesta a un mensaje existente.
+ * @param {string} messageId - ID del mensaje al que se responde
+ * @param {object} reply - Objeto con la respuesta
+ * @returns {object|null} - La respuesta añadida o null si no se encontró el mensaje
+ */
+export function addReply(messageId, reply) {
+  const found = findMessageById(messageId);
+  if (!found) return null;
+  
+  const { post, file, posts } = found;
+  
+  // Inicializar array de respuestas si no existe
+  if (!post.replies) {
+    post.replies = [];
+  }
+  
+  // Añadir la respuesta
+  post.replies.push(reply);
+  
+  // Guardar el archivo actualizado
+  fs.writeFileSync(file, JSON.stringify(posts, null, 2), 'utf8');
+  
+  return reply;
+}
+
+/**
+ * Elimina una respuesta específica de un mensaje.
+ * @param {string} messageId - ID del mensaje principal
+ * @param {string} replyId - ID de la respuesta a eliminar
+ * @returns {object|null} - La respuesta eliminada o null si no se encontró
+ */
+export function deleteReply(messageId, replyId) {
+  const found = findMessageById(messageId);
+  if (!found) return null;
+  
+  const { post, file, posts } = found;
+  
+  if (!post.replies || !Array.isArray(post.replies)) return null;
+  
+  const replyIndex = post.replies.findIndex(r => r && String(r.id) === String(replyId));
+  if (replyIndex === -1) return null;
+  
+  const [deletedReply] = post.replies.splice(replyIndex, 1);
+  
+  // Guardar el archivo actualizado
+  fs.writeFileSync(file, JSON.stringify(posts, null, 2), 'utf8');
+  
+  return deletedReply;
+}
+
+/**
+ * Busca una respuesta específica dentro de un mensaje.
+ * @param {string} messageId - ID del mensaje principal
+ * @param {string} replyId - ID de la respuesta a buscar
+ * @returns {object|null} - La respuesta encontrada o null
+ */
+export function findReply(messageId, replyId) {
+  const found = findMessageById(messageId);
+  if (!found) return null;
+  
+  const { post } = found;
+  
+  if (!post.replies || !Array.isArray(post.replies)) return null;
+  
+  return post.replies.find(r => r && String(r.id) === String(replyId)) || null;
+}
