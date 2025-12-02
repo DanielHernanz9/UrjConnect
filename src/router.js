@@ -375,3 +375,82 @@ router.delete('/api/messages/:id', withAuth, async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
+// POST respuesta a un mensaje del foro
+router.post('/api/messages/:id/reply', withAuth, (req, res) => {
+  const messageId = req.params.id;
+  const { content, replyToUser, replyToId } = req.body || {};
+  
+  if (!content) {
+    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Falta contenido' } });
+  }
+  
+  const found = forum.findMessageById(messageId);
+  if (!found || !found.post) {
+    return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Mensaje no encontrado' } });
+  }
+  
+  const reply = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+    content: String(content).trim().slice(0, 5000),
+    userName: req.user.name || req.user.email,
+    userEmail: req.user.email,
+    userColor: req.user.color || '#6366f1',
+    replyToUser: replyToUser || null,
+    replyToId: replyToId || null,
+    timestamp: new Date().toISOString()
+  };
+  
+  const added = forum.addReply(messageId, reply);
+  if (!added) {
+    return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Error al añadir respuesta' } });
+  }
+  
+  res.status(201).json(reply);
+});
+
+// DELETE respuesta específica de un mensaje
+router.delete('/api/messages/:messageId/reply/:replyId', withAuth, async (req, res) => {
+  const { messageId, replyId } = req.params;
+  
+  try {
+    const found = forum.findMessageById(messageId);
+    if (!found || !found.post) {
+      return res.status(404).json({ error: 'Mensaje no encontrado' });
+    }
+    
+    const reply = forum.findReply(messageId, replyId);
+    if (!reply) {
+      return res.status(404).json({ error: 'Respuesta no encontrada' });
+    }
+    
+    const user = req.user || null;
+    const isAdmin = user ? (user.isAdmin === true || user.role === 'admin') : false;
+    const isOwner = user && (reply.userName === user.name || reply.userEmail === user.email);
+    
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({ error: 'No tienes permisos para borrar esta respuesta' });
+    }
+    
+    // Si no es admin y es una respuesta directa (sin replyToUser), verificar que no haya respuestas a ella
+    if (!isAdmin && !reply.replyToUser) {
+      const replies = found.post.replies || [];
+      const hasChildReplies = replies.some(r => r.replyToUser === reply.userName && r.id !== replyId);
+      
+      if (hasChildReplies) {
+        return res.status(400).json({ error: 'No puedes borrar esta respuesta porque hay otras respuestas dirigidas a ella' });
+      }
+    }
+    // Las respuestas con @ (reply.replyToUser existe) siempre se pueden borrar por el propietario
+    
+    const deleted = forum.deleteReply(messageId, replyId);
+    if (!deleted) {
+      return res.status(500).json({ error: 'Error al borrar la respuesta' });
+    }
+    
+    res.json({ success: true, deleted });
+  } catch (err) {
+    console.error('Error deleting reply:', err);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
