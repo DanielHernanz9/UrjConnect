@@ -299,12 +299,10 @@ const forumApp = {
                         <div style="font-size: 14px; line-height: 1.5; white-space: pre-wrap;">
                             ${this.escapeHtml(reply.content)}
                         </div>
-                        <div style="margin-top: 6px">
+                        <div style="margin-top: 6px; display: flex; gap: 8px;">
                             <button class="btn-reply-to-reply" data-parent-id="${parentId}" data-reply-to="${this.escapeHtml(displayName)}" data-reply-id="${reply.id}" data-thread-root="${reply.id}" style="padding: 4px 8px; font-size: 12px; border: 1px solid var(--border); background: transparent; color: var(--muted); border-radius: 4px; cursor: pointer;">
                                 ↩️ Responder
                             </button>
-                        </div>
-                    </div>
             `;
             
             // Filtrar solo las respuestas que pertenecen a este hilo y no han sido renderizadas
@@ -314,7 +312,22 @@ const forumApp = {
             threadReplies.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
             
             if (threadReplies.length > 0) {
-                html += '<div class="sub-replies" style="margin-left: 16px; padding-left: 12px; border-left: 2px solid var(--border);">';
+                html += `
+                            <button class="btn-toggle-replies" data-reply-id="${reply.id}" style="padding: 4px 8px; font-size: 12px; border: 1px solid var(--border); background: transparent; color: var(--primary); border-radius: 4px; cursor: pointer;">
+                                👁️ Ver respuestas (${threadReplies.length})
+                            </button>
+                        </div>
+                    </div>
+                    <div class="sub-replies" data-reply-id="${reply.id}" style="display: none; margin-left: 16px; padding-left: 12px; border-left: 2px solid var(--border);">
+                `;
+            } else {
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+            
+            if (threadReplies.length > 0) {
                 threadReplies.forEach(subReply => {
                     renderedNestedIds.add(subReply.id);
                     
@@ -347,9 +360,8 @@ const forumApp = {
                     `;
                 });
                 html += '</div>';
+                html += '</div>';
             }
-            
-            html += '</div>';
         });
         
         html += '</div>';
@@ -518,11 +530,29 @@ const forumApp = {
             }
         });
 
-        // Delegación para botones de responder y borrar respuestas
+        // Delegación para botones de responder, borrar y toggle
         this.el.postsContainer?.addEventListener('click', async (e) => {
             const btnReply = e.target.closest('.btn-reply');
             const btnReplyToReply = e.target.closest('.btn-reply-to-reply');
             const btnDeleteReply = e.target.closest('.btn-delete-reply');
+            const btnToggleReplies = e.target.closest('.btn-toggle-replies');
+            
+            if (btnToggleReplies) {
+                const replyId = btnToggleReplies.dataset.replyId;
+                const subRepliesEl = this.el.postsContainer.querySelector(`.sub-replies[data-reply-id="${replyId}"]`);
+                
+                if (subRepliesEl) {
+                    const isHidden = subRepliesEl.style.display === 'none';
+                    subRepliesEl.style.display = isHidden ? 'block' : 'none';
+                    
+                    // Contar respuestas
+                    const replyCount = subRepliesEl.querySelectorAll('.reply').length;
+                    btnToggleReplies.textContent = isHidden 
+                        ? `👁️ Ocultar respuestas (${replyCount})` 
+                        : `👁️ Ver respuestas (${replyCount})`;
+                }
+                return;
+            }
             
             if (btnReply) {
                 const messageId = btnReply.dataset.messageId;
