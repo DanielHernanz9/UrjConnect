@@ -168,10 +168,6 @@ const DEFAULT_SUBJECTS = [
     },
 ];
 
-DEFAULT_SUBJECTS.forEach((def) => {
-    // no-op here, we'll reset below
-});
-
 // ===== Ejecutar reset cada vez que arranque la app =====
 resetToDefaults(DEFAULT_SUBJECTS);
 
@@ -236,6 +232,7 @@ export function addSubject(subject) {
     if (SUBJECTS.get(subject.id)) {
         return 21;
     }
+    ALIASES.delete(subject.id);
     SUBJECTS.set(subject.id, subject);
     saveSubject(subject);
     return 0;
@@ -271,6 +268,7 @@ export function deleteSubject(id) {
     }
 
     SUBJECTS.delete(id);
+    ALIASES.delete(id);
     removeSubjectFile(id);
 }
 
@@ -327,6 +325,7 @@ export function modifySubjectById(oldId, incoming) {
         // Renombrar: asignar nuevo id, guardar, borrar archivo viejo y crear alias
         updated.id = desiredId;
         SUBJECTS.delete(oldId);
+        ALIASES.delete(desiredId);
         SUBJECTS.set(desiredId, updated);
         saveSubject(updated);
         removeSubjectFile(oldId);
