@@ -119,17 +119,40 @@ const forumApp = {
 
     async fetchAndRenderReports() {
         try {
-            const res = await fetch("/api/reports");
-            if (!res.ok) throw new Error("No se pudieron cargar los reportes");
-            const reports = await res.json();
+            // Cargar sólo reportes del foro actual
+            const currentSubjectId = this.subject?.id;
+            if (!currentSubjectId) {
+                toast("Foro no cargado");
+                return;
+            }
+
+            let reports = [];
+            let usedSubjectEndpoint = false;
+            // Preferir endpoint filtrado por asignatura si existe
+            try {
+                const resBySubject = await fetch(`/api/subjects/${encodeURIComponent(currentSubjectId)}/reports`);
+                if (resBySubject.ok) {
+                    reports = await resBySubject.json();
+                    usedSubjectEndpoint = true;
+                }
+            } catch (e) {}
+            if (!usedSubjectEndpoint) {
+                const res = await fetch("/api/reports");
+                if (!res.ok) throw new Error("No se pudieron cargar los reportes");
+                const allReports = await res.json();
+                reports = (allReports || []).filter((r) => {
+                    const sid = r.subjectId || (r.message && r.message.subjectId);
+                    return String(sid) === String(currentSubjectId);
+                });
+            }
             const list = $("#reportsList");
             if (!list) return;
             list.innerHTML = "";
             if (!reports || reports.length === 0) {
                 list.innerHTML = `
                     <div class="hint" style="padding: 24px; text-align: center">
-                        <p style="margin: 0; font-weight: 700">No hay reportes pendientes</p>
-                        <p style="margin: 8px 0 0; font-size: 13px; color: var(--muted)">No hay mensajes reportados que requieran intervención. Esta vista está pensada para administradores; cuando un usuario reporte un mensaje, aparecerá aquí para su revisión.</p>
+                        <p style="margin: 0; font-weight: 700">No hay reportes de este foro</p>
+                        <p style="margin: 8px 0 0; font-size: 13px; color: var(--muted)">Este modal solo muestra reportes del foro actual.</p>
                     </div>
                 `;
                 return;
