@@ -3,6 +3,7 @@ import multer from "multer";
 import * as auth from "./authService.js";
 import * as subjects from "./subjectService.js";
 import * as forum from "./forumService.js";
+import User from "./User.js";
 
 const router = express.Router();
 // Configuración de subida de iconos a /public/assets
@@ -38,6 +39,23 @@ function withAuth(req, res, next) {
     if (req.cookies && req.cookies.session_id) {
         const user = auth.authenticate(req.cookies.session_id);
         if (user) {
+            // Si el usuario está baneado, redirigir a la página 'banned' para peticiones HTML
+            if (user.isBanned && user.isBanned()) {
+                // Si el cliente espera HTML (navegador), renderizar la vista banned
+                const accepts = String(req.headers.accept || "");
+                if (accepts.indexOf("text/html") !== -1) {
+                    try {
+                        const jsonUser = user.toJson();
+                        const userName = user.name || user.email;
+                        return res.render("banned", { jsonUser, userName });
+                    } catch (e) {
+                        // Si no se puede renderizar por alguna razón, devolver 403
+                        return res.status(403).send("Cuenta suspendida");
+                    }
+                }
+                // Para llamadas API (JSON), devolver error 403 con código BANNED
+                return res.status(403).json({ error: { code: "BANNED", message: "Cuenta suspendida" } });
+            }
             req.user = user;
             return next();
         }
@@ -50,6 +68,21 @@ function withAdmin(req, res, next) {
     if (req.cookies && req.cookies.session_id) {
         const user = auth.authenticate(req.cookies.session_id);
         if (user) {
+            // Rechazar usuarios baneados también
+            if (user.isBanned && user.isBanned()) {
+                const accepts = String(req.headers.accept || "");
+                if (accepts.indexOf("text/html") !== -1) {
+                    try {
+                        const jsonUser = user.toJson();
+                        const userName = user.name || user.email;
+                        return res.render("banned", { jsonUser, userName });
+                    } catch (e) {
+                        return res.status(403).json({ error: { code: "BANNED", message: "Cuenta suspendida" } });
+                    }
+                }
+                return res.status(403).json({ error: { code: "BANNED", message: "Cuenta suspendida" } });
+            }
+
             if (!user.isRole("admin")) {
                 return res.status(403).json({
                     error: { code: "FORBIDDEN", message: "No tienes permisos para realizar esta acción." },
@@ -69,10 +102,11 @@ router.get("/", (req, res) => {
 
         if (user) {
             const jsonUser = user.toJson();
+            const userName = user.name || user.email;
             if (user.isBanned()) {
-                res.render("banned", { jsonUser });
+                res.render("banned", { jsonUser, userName });
             } else {
-                res.render("index", { jsonUser });
+                res.render("index", { jsonUser, userName });
             }
 
             return;
@@ -418,7 +452,7 @@ router.post("/api/messages/:id/report", withAuth, (req, res) => {
 });
 
 // Obtener reportes (solo administradores)
-router.get("/api/reports", withAuth, (req, res) => {
+router.get("/api/reports", withAdmin, (req, res) => {
     try {
         const reports = forum.getReports();
         // Mostrar solo reportes no resueltos
@@ -503,6 +537,21 @@ router.delete("/api/reports/:id", withAdmin, (req, res) => {
     } catch (e) {
         console.error("Error deleting report:", e);
         return res.status(500).json({ error: { code: "SERVER", message: "Error borrando reporte" } });
+    }
+});
+
+// Banear usuario por email (solo admin)
+router.post("/api/users/ban", withAdmin, (req, res) => {
+    try {
+        const email = String((req.body && req.body.email) || "").trim().toLowerCase();
+        if (!email) return res.status(400).json({ error: { code: "BAD_REQUEST", message: "Falta el email del usuario" } });
+        const u = User.getFromFile(email);
+        if (typeof u === "number") return res.status(404).json({ error: { code: "NOT_FOUND", message: "Usuario no encontrado" } });
+        u.setBanned(true);
+        return res.json({ success: true });
+    } catch (e) {
+        console.error("Error baneando usuario:", e);
+        return res.status(500).json({ error: { code: "SERVER", message: "Error al banear usuario" } });
     }
 });
 
