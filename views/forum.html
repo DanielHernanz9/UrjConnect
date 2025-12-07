@@ -96,6 +96,11 @@
                             <label for="messageContent">Contenido</label>
                             <textarea id="messageContent" name="content" rows="5" placeholder="Comparte una duda, recurso o idea sobre la asignatura..." required></textarea>
                         </div>
+                        <div class="field" style="margin-top: 12px">
+                            <label for="messageAttachments">Adjuntos (imágenes o archivos)</label>
+                            <input id="messageAttachments" name="attachments" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar" />
+                            <small class="hint">Máx. 5 archivos, 5MB cada uno.</small>
+                        </div>
                         <div class="actions" style="justify-content: flex-start; margin-top: 12px">
                             <button class="btn" type="submit">Publicar mensaje</button>
                             <button class="btn secondary" type="reset">Limpiar</button>
@@ -155,6 +160,11 @@
                             <label for="replyContent">Tu respuesta</label>
                             <textarea id="replyContent" name="content" rows="4" placeholder="Escribe tu respuesta..." required></textarea>
                         </div>
+                        <div class="field" style="margin-top: 12px">
+                            <label for="replyAttachments">Adjuntos</label>
+                            <input id="replyAttachments" name="attachments" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar" />
+                            <small class="hint">Máx. 5 archivos, 5MB cada uno.</small>
+                        </div>
                         <div class="actions" style="justify-content: flex-end">
                             <button class="btn" type="submit">Enviar respuesta</button>
                             <button class="btn secondary" type="button" data-close="#replyModal">Cancelar</button>
@@ -182,6 +192,20 @@
         </div>
 
         <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+        <!-- Modal de adjuntos (vista previa y descarga) -->
+        <div class="modal" id="attachmentModal" role="dialog" aria-modal="true" aria-labelledby="attachmentTitle" style="display: none">
+            <div class="content glass">
+                <div class="body">
+                    <h3 id="attachmentTitle" style="margin: 0 0 8px 0">Adjunto</h3>
+                    <div id="attachmentPreview" style="display: grid; place-items: center; max-height: 60vh; overflow: auto; border: 1px solid var(--border); border-radius: 12px; padding: 10px; background: var(--bg-2)"></div>
+                    <div class="actions" style="justify-content: space-between; margin-top: 12px">
+                        <a id="attachmentDownload" class="btn" href="#" download>Descargar</a>
+                        <button class="btn secondary" data-close="#attachmentModal">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         {{#jsonUser}}
         <script id="__initialUser" type="application/json">

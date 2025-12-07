@@ -1,4 +1,5 @@
 import express, { json } from "express";
+import fs from "fs";
 import multer from "multer";
 import * as auth from "./authService.js";
 import * as subjects from "./subjectService.js";
@@ -7,7 +8,7 @@ import User from "./User.js";
 
 const router = express.Router();
 // Configuración de subida de iconos a /public/assets
-const upload = multer({
+const uploadAssets = multer({
     storage: multer.diskStorage({
         destination: function (req, file, cb) {
             cb(null, "public/assets");
@@ -17,6 +18,34 @@ const upload = multer({
             cb(null, Date.now() + "-" + safe);
         },
     }),
+});
+
+// Configuración de subida de adjuntos a /public/uploads
+const uploadAttachments = multer({
+    storage: multer.diskStorage({
+        destination: function (req, file, cb) {
+            try {
+                const dir = "public/uploads";
+                if (!fs.existsSync(dir)) {
+                    fs.mkdirSync(dir, { recursive: true });
+                }
+                cb(null, dir);
+            } catch (e) {
+                cb(e);
+            }
+        },
+        filename: function (req, file, cb) {
+            const safe = file.originalname.replace(/[^a-zA-Z0-9_.-]+/g, "-");
+            cb(null, Date.now() + "-" + safe);
+        },
+    }),
+    limits: { fileSize: 5 * 1024 * 1024, files: 5 }, // 5MB, máx 5 archivos
+    fileFilter: (req, file, cb) => {
+        // Aceptar imágenes y tipos comunes de documentos
+        const ok = /\.(png|jpg|jpeg|gif|webp|pdf|docx?|xlsx?|pptx?|txt|zip|rar)$/i.test(file.originalname);
+        if (ok) return cb(null, true);
+        cb(new Error("Tipo de archivo no permitido"));
+    },
 });
 
 const COOKIEOPTIONS = {
@@ -281,7 +310,7 @@ router.get("/subject/:id/forum", withAuth, (req, res) => {
 });
 
 // Publicar un mensaje en el foro de una asignatura
-router.post("/subject/:id/forum/post", withAuth, (req, res) => {
+router.post("/subject/:id/forum/post", withAuth, uploadAttachments.array("attachments", 5), (req, res) => {
     const id = req.params.id;
     const alias = subjects.getAlias ? subjects.getAlias(id) : null;
     const subject = getSubjectById(alias || id);
@@ -303,6 +332,14 @@ router.post("/subject/:id/forum/post", withAuth, (req, res) => {
         userEmail: req.user.email,
         userColor: req.user.color || "#6366f1",
         timestamp: new Date().toISOString(),
+        attachments: Array.isArray(req.files)
+            ? req.files.map((f) => ({
+                  url: "/uploads/" + f.filename,
+                  name: f.originalname,
+                  type: f.mimetype,
+                  size: f.size,
+              }))
+            : [],
     };
 
     forum.addPost(subject.id, post);
@@ -311,7 +348,7 @@ router.post("/subject/:id/forum/post", withAuth, (req, res) => {
 
 export default router;
 
-router.post("/uploadIcon", withAdmin, upload.single("icon"), (req, res) => {
+router.post("/uploadIcon", withAdmin, uploadAssets.single("icon"), (req, res) => {
     if (!req.file) return res.status(400).json({ error: { code: "NO_FILE", message: "Falta archivo" } });
     const webPath = "/assets/" + req.file.filename;
     return res.json({ path: webPath });
@@ -543,7 +580,9 @@ router.delete("/api/reports/:id", withAdmin, (req, res) => {
 // Banear usuario por email (solo admin)
 router.post("/api/users/ban", withAdmin, (req, res) => {
     try {
-        const email = String((req.body && req.body.email) || "").trim().toLowerCase();
+        const email = String((req.body && req.body.email) || "")
+            .trim()
+            .toLowerCase();
         if (!email) return res.status(400).json({ error: { code: "BAD_REQUEST", message: "Falta el email del usuario" } });
         const u = User.getFromFile(email);
         if (typeof u === "number") return res.status(404).json({ error: { code: "NOT_FOUND", message: "Usuario no encontrado" } });
@@ -569,7 +608,7 @@ router.post("/api/reports/resolve-message/:messageId", withAdmin, (req, res) => 
 });
 
 // Publicar una respuesta a un mensaje
-router.post("/api/messages/:messageId/reply", withAuth, (req, res) => {
+router.post("/api/messages/:messageId/reply", withAuth, uploadAttachments.array("attachments", 5), (req, res) => {
     const messageId = req.params.messageId;
     const { content, replyToUser, replyToId } = req.body || {};
 
@@ -591,6 +630,14 @@ router.post("/api/messages/:messageId/reply", withAuth, (req, res) => {
         replyToUser: replyToUser || null,
         replyToId: replyToId || null,
         timestamp: new Date().toISOString(),
+        attachments: Array.isArray(req.files)
+            ? req.files.map((f) => ({
+                  url: "/uploads/" + f.filename,
+                  name: f.originalname,
+                  type: f.mimetype,
+                  size: f.size,
+              }))
+            : [],
     };
 
     const added = forum.addReply(messageId, reply);

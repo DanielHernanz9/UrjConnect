@@ -125,6 +125,24 @@ export function deleteMessage(messageId) {
             if (!Array.isArray(arr)) continue;
             const idx = arr.findIndex((p) => p && String(p.id) === String(messageId));
             if (idx !== -1) {
+                // Antes de eliminar, borrar ficheros adjuntos del mensaje y sus respuestas
+                try {
+                    const post = arr[idx];
+                    const attachments = Array.isArray(post.attachments) ? post.attachments : [];
+                    const replyAttachments = (post.replies || []).flatMap((r) => (Array.isArray(r.attachments) ? r.attachments : []));
+                    const all = attachments.concat(replyAttachments);
+                    all.forEach((a) => {
+                        if (!a || !a.url) return;
+                        // Mapear URL /uploads/xxx a ruta física public/uploads/xxx
+                        const rel = a.url.replace(/^\//, "");
+                        const physical = path.join("public", rel);
+                        try {
+                            if (fs.existsSync(physical)) fs.unlinkSync(physical);
+                        } catch (e) {
+                            // ignorar errores de borrado individual
+                        }
+                    });
+                } catch (e) {}
                 const [deleted] = arr.splice(idx, 1);
                 fs.writeFileSync(full, JSON.stringify(arr, null, 2), "utf8");
                 // También eliminar reportes asociados a este mensaje
@@ -204,6 +222,18 @@ export function deleteReply(messageId, replyId) {
     if (replyIndex === -1) return null;
 
     const [deletedReply] = post.replies.splice(replyIndex, 1);
+    // Borrar ficheros adjuntos de la respuesta eliminada
+    try {
+        const atts = Array.isArray(deletedReply.attachments) ? deletedReply.attachments : [];
+        atts.forEach((a) => {
+            if (!a || !a.url) return;
+            const rel = a.url.replace(/^\//, "");
+            const physical = path.join("public", rel);
+            try {
+                if (fs.existsSync(physical)) fs.unlinkSync(physical);
+            } catch (e) {}
+        });
+    } catch (e) {}
 
     // Guardar el archivo actualizado
     fs.writeFileSync(file, JSON.stringify(posts, null, 2), "utf8");

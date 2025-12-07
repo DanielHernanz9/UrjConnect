@@ -219,7 +219,11 @@ const forumApp = {
                                             ? `<button class="btn secondary report-action-ignore-reply" data-message-id="${msg.id}" data-reply-id="${g.reply.id}" title="Marcar como revisado">Dejar</button>`
                                             : `<button class="btn secondary report-action-ignore" data-message-id="${msg.id}" title="Marcar como revisado">Dejar</button>`
                                     }
-                                    ${this.user && this.user.role === "admin" ? `<button class="btn ban report-action-ban" data-message-id="${msg.id}" data-user-email="${this.escapeHtml(msg.userEmail || "")}" title="Banear usuario">Banear</button>` : ``}
+                                    ${
+                                        this.user && this.user.role === "admin"
+                                            ? `<button class="btn ban report-action-ban" data-message-id="${msg.id}" data-user-email="${this.escapeHtml(msg.userEmail || "")}" title="Banear usuario">Banear</button>`
+                                            : ``
+                                    }
                                     ${
                                         isReply
                                             ? `<button class="btn report-action-delete-reply" data-message-id="${msg.id}" data-reply-id="${g.reply.id}" title="Borrar respuesta">Borrar</button>`
@@ -289,7 +293,7 @@ const forumApp = {
                             listEl.style.display = "none";
                             b.textContent = "Ver reportantes";
                         }
-                        } else if (b.classList.contains("report-action-ban")) {
+                    } else if (b.classList.contains("report-action-ban")) {
                         const userEmail = b.dataset.userEmail;
                         if (!userEmail) return toast("No se puede banear: falta email del usuario");
                         if (!confirm(`¿Banear al usuario ${userEmail}? Esta acción marcará su cuenta como suspendida.`)) return;
@@ -532,6 +536,24 @@ const forumApp = {
                 </div>
                 <div class="post-title" style="font-weight: 700; font-size: 16px; margin-bottom: 8px">${this.escapeHtml(msg.title)}</div>
                 <div class="post-content" style="white-space: pre-wrap; line-height: 1.6">${this.escapeHtml(msg.content)}</div>
+                ${
+                    Array.isArray(msg.attachments) && msg.attachments.length > 0
+                        ? `
+                <div class="attachments" style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+                    ${msg.attachments
+                        .map((a) => {
+                            const isImage = /^image\//.test(a.type || "");
+                            const safeName = forumApp.escapeHtml(a.name || "archivo");
+                            if (isImage) {
+                                return `<a href="${a.url}" target="_blank" rel="noopener" class="attachment-thumb" title="${safeName}"><img src="${a.url}" alt="${safeName}" style="width:120px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--chip-border)"/></a>`;
+                            }
+                            return `<a href="${a.url}" target="_blank" rel="noopener" class="attachment-file" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--chip-border);border-radius:8px;padding:6px 8px;background:var(--chip)">${safeName}</a>`;
+                        })
+                        .join("")}
+                </div>
+                `
+                        : ""
+                }
                 <div class="post-actions" style="margin-top: 12px; display: flex; gap: 8px">
                     <button class="btn-reply" data-message-id="${msg.id}" data-reply-to="${this.escapeHtml(displayName)}" title="Responder">
                         Responder
@@ -572,12 +594,17 @@ const forumApp = {
             const msgId = decodeURIComponent(mMsg[1]);
             const postEl = document.querySelector(`#msg-${CSS.escape(msgId)}`);
             if (postEl) {
-                this.scrollElementToCenter(postEl);
-                // Usar clase con pseudo-elemento para borde/halo limpio que respeta border-radius
-                postEl.classList.add("context-highlight");
-                setTimeout(() => {
-                    postEl.classList.remove("context-highlight");
-                }, 5000);
+                this.scrollElementToCenter(postEl, () => {
+                    // Esperar 0.5s antes de mostrar el borde
+                    setTimeout(() => {
+                        // Usar clase con pseudo-elemento para borde limpio que respeta border-radius
+                        postEl.classList.add("context-highlight");
+                        // Hacer fade-in del borde
+                        postEl.classList.add("context-visible");
+                        // Mantener el borde hasta que el usuario haga scroll
+                        this.installScrollClear(postEl);
+                    }, 500);
+                });
             }
             return;
         }
@@ -603,11 +630,16 @@ const forumApp = {
 
         const targetBlock = anyBtn ? anyBtn.closest(".reply") : document.querySelector(`#reply-${CSS.escape(replyId)}`) || document.querySelector(`[data-reply-id="${CSS.escape(replyId)}"]`);
         if (targetBlock) {
-            this.scrollElementToCenter(targetBlock);
-            targetBlock.classList.add("context-highlight");
-            setTimeout(() => {
-                targetBlock.classList.remove("context-highlight");
-            }, 5000);
+            this.scrollElementToCenter(targetBlock, () => {
+                // Esperar 0.5s antes de mostrar el borde
+                setTimeout(() => {
+                    targetBlock.classList.add("context-highlight");
+                    // Hacer fade-in del borde
+                    targetBlock.classList.add("context-visible");
+                    // Mantener el borde hasta que el usuario haga scroll
+                    this.installScrollClear(targetBlock);
+                }, 500);
+            });
         } else if (sub) {
             this.scrollElementToCenter(sub);
         }
@@ -619,18 +651,75 @@ const forumApp = {
             document.querySelectorAll(".context-highlight").forEach((el) => {
                 el.classList.remove("context-highlight");
             });
+            // Desinstalar listener de scroll si estaba activo
+            if (this._onScrollClear) {
+                window.removeEventListener("scroll", this._onScrollClear);
+                this._onScrollClear = null;
+            }
+            this._activeHighlightEl = null;
         } catch (e) {
             // noop
         }
     },
 
-    // Desplaza suavemente para colocar el elemento en el centro de la pantalla
-    scrollElementToCenter(el) {
+    // Instala un listener de scroll para limpiar el resaltado cuando el usuario se mueva
+    installScrollClear(el) {
+        this._activeHighlightEl = el;
+        // Si existía un handler anterior, quitarlo
+        if (this._onScrollClear) {
+            window.removeEventListener("scroll", this._onScrollClear);
+            this._onScrollClear = null;
+        }
+        this._onScrollClear = () => {
+            try {
+                if (this._activeHighlightEl) {
+                    // Iniciar fade-out quitando la visibilidad
+                    this._activeHighlightEl.classList.remove("context-visible");
+                    // Tras la transición (match CSS 1200ms), quitar la clase principal
+                    setTimeout(() => {
+                        this._activeHighlightEl && this._activeHighlightEl.classList.remove("context-highlight");
+                    }, 1200);
+                }
+            } catch (e) {}
+            // Limpieza del handler
+            window.removeEventListener("scroll", this._onScrollClear);
+            this._onScrollClear = null;
+            // Quitar referencia activa tras el fade
+            setTimeout(() => {
+                this._activeHighlightEl = null;
+            }, 1220);
+        };
+        // Usar { passive: true } para no bloquear el scroll
+        window.addEventListener("scroll", this._onScrollClear, { passive: true });
+    },
+
+    // Desplaza suavemente para colocar el elemento en el centro de la pantalla y ejecuta un callback al llegar
+    scrollElementToCenter(el, onArrive) {
         if (!el) return;
         const rect = el.getBoundingClientRect();
-        const targetY = window.scrollY + rect.top + rect.height / 2 - window.innerHeight / 2;
-        const clampedY = Math.max(0, targetY);
-        window.scrollTo({ top: clampedY, behavior: "smooth" });
+        const targetY = Math.max(0, window.scrollY + rect.top + rect.height / 2 - window.innerHeight / 2);
+
+        // Iniciar scroll suave
+        window.scrollTo({ top: targetY, behavior: "smooth" });
+
+        // Si no hay callback, salir
+        if (typeof onArrive !== "function") return;
+
+        // Observador de llegada: cuando el scroll esté cerca del objetivo, lanzar callback
+        let lastY = window.scrollY;
+        const threshold = 2; // px
+        const checkArrival = () => {
+            const currentY = window.scrollY;
+            const dist = Math.abs(currentY - targetY);
+            // Consideramos llegada si está dentro del umbral o si el scroll se ha detenido cerca
+            if (dist <= threshold || Math.abs(currentY - lastY) < 0.5) {
+                onArrive();
+                return; // detener comprobación
+            }
+            lastY = currentY;
+            requestAnimationFrame(checkArrival);
+        };
+        requestAnimationFrame(checkArrival);
     },
 
     renderReplies(replies, parentId) {
@@ -746,6 +835,24 @@ const forumApp = {
                         <div style="font-size: 14px; line-height: 1.5; white-space: pre-wrap;">
                             ${this.escapeHtml(reply.content)}
                         </div>
+                        ${
+                            Array.isArray(reply.attachments) && reply.attachments.length > 0
+                                ? `
+                        <div class="attachments" style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                            ${reply.attachments
+                                .map((a) => {
+                                    const isImage = /^image\//.test(a.type || "");
+                                    const safeName = forumApp.escapeHtml(a.name || "archivo");
+                                    if (isImage) {
+                                        return `<a href="${a.url}" target="_blank" rel="noopener" class="attachment-thumb" title="${safeName}"><img src="${a.url}" alt="${safeName}" style="width:110px;height:74px;object-fit:cover;border-radius:6px;border:1px solid var(--chip-border)"/></a>`;
+                                    }
+                                    return `<a href="${a.url}" target="_blank" rel="noopener" class="attachment-file" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--chip-border);border-radius:8px;padding:6px 8px;background:var(--chip)">${safeName}</a>`;
+                                })
+                                .join("")}
+                        </div>
+                        `
+                                : ""
+                        }
                         <div style="margin-top: 6px; display: flex; gap: 8px;">
                             <button class="btn-reply-to-reply" data-parent-id="${parentId}" data-reply-to="${this.escapeHtml(displayName)}" data-reply-id="${reply.id}" data-thread-root="${reply.id}" title="Responder">
                                 Responder
@@ -803,6 +910,24 @@ const forumApp = {
                             <div style="font-size: 13px; line-height: 1.5; white-space: pre-wrap;">
                                 <span style="color: var(--primary); font-weight: 600;">@${this.escapeHtml(subReply.replyToUser)}</span> ${this.escapeHtml(subReply.content)}
                             </div>
+                            ${
+                                Array.isArray(subReply.attachments) && subReply.attachments.length > 0
+                                    ? `
+                            <div class="attachments" style="margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap;">
+                                ${subReply.attachments
+                                    .map((a) => {
+                                        const isImage = /^image\//.test(a.type || "");
+                                        const safeName = forumApp.escapeHtml(a.name || "archivo");
+                                        if (isImage) {
+                                            return `<a href="${a.url}" target="_blank" rel="noopener" class="attachment-thumb" title="${safeName}"><img src="${a.url}" alt="${safeName}" style="width:100px;height:68px;object-fit:cover;border-radius:6px;border:1px solid var(--chip-border)"/></a>`;
+                                        }
+                                        return `<a href="${a.url}" target="_blank" rel="noopener" class="attachment-file" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--chip-border);border-radius:8px;padding:6px 8px;background:var(--chip)">${safeName}</a>`;
+                                    })
+                                    .join("")}
+                            </div>
+                            `
+                                    : ""
+                            }
                             <div style="margin-top: 4px">
                                 <button class="btn-reply-to-reply" data-parent-id="${parentId}" data-reply-to="${this.escapeHtml(subDisplayName)}" data-reply-id="${subReply.id}" data-thread-root="${reply.id}" title="Responder">
                                     Responder
@@ -928,10 +1053,24 @@ const forumApp = {
                 return;
             }
             try {
+                // Construir multipart/form-data incluyendo adjuntos
+                const fd = new FormData();
+                fd.append("title", title);
+                fd.append("content", content);
+                const files = form.querySelector("#messageAttachments")?.files || [];
+                const maxFiles = 5;
+                const maxSize = 5 * 1024 * 1024;
+                for (let i = 0; i < Math.min(files.length, maxFiles); i++) {
+                    const f = files[i];
+                    if (f.size > maxSize) {
+                        toast(`Archivo demasiado grande: ${f.name}`);
+                        return;
+                    }
+                    fd.append("attachments", f, f.name);
+                }
                 const res = await fetch(`/subject/${encodeURIComponent(this.subject.id)}/forum/post`, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ title, content }),
+                    body: fd,
                 });
                 if (!res.ok) throw new Error("Error publicando");
                 const created = await res.json();
@@ -1009,6 +1148,27 @@ const forumApp = {
 
         // Delegación para botones de responder, borrar y toggle
         this.el.postsContainer?.addEventListener("click", async (e) => {
+            const attThumb = e.target.closest && e.target.closest(".attachment-thumb");
+            const attFile = e.target.closest && e.target.closest(".attachment-file");
+            if (attThumb || attFile) {
+                e.preventDefault();
+                const href = (attThumb || attFile).getAttribute("href");
+                // Intentar reconstruir metadatos mínimos del adjunto desde el contexto
+                const name = (attThumb || attFile).getAttribute("title") || (attThumb || attFile).textContent || "adjunto";
+                // tipo no está en el DOM; inferencia básica por extensión
+                const ext = href.split(".").pop().toLowerCase();
+                const mimeByExt = {
+                    png: "image/png",
+                    jpg: "image/jpeg",
+                    jpeg: "image/jpeg",
+                    gif: "image/gif",
+                    webp: "image/webp",
+                    pdf: "application/pdf",
+                };
+                const type = mimeByExt[ext] || "";
+                this.openAttachmentModal({ url: href, name, type });
+                return;
+            }
             const btnReply = e.target.closest(".btn-reply");
             const btnReport = e.target.closest(".btn-report");
             const btnReplyToReply = e.target.closest(".btn-reply-to-reply");
@@ -1165,7 +1325,7 @@ const forumApp = {
             // (el handler de btnReportReply ya gestiona el estado visual arriba)
         });
 
-        // Formulario de respuesta
+        // Formulario de respuesta con adjuntos
         this.el.replyForm?.addEventListener("submit", async (e) => {
             e.preventDefault();
             const messageId = this.el.replyMessageId.value;
@@ -1179,10 +1339,24 @@ const forumApp = {
             }
 
             try {
+                const fd = new FormData();
+                fd.append("content", content);
+                if (replyToUser) fd.append("replyToUser", replyToUser);
+                if (replyToId) fd.append("replyToId", replyToId);
+                const files = document.getElementById("replyAttachments")?.files || [];
+                const maxFiles = 5;
+                const maxSize = 5 * 1024 * 1024;
+                for (let i = 0; i < Math.min(files.length, maxFiles); i++) {
+                    const f = files[i];
+                    if (f.size > maxSize) {
+                        toast(`Archivo demasiado grande: ${f.name}`);
+                        return;
+                    }
+                    fd.append("attachments", f, f.name);
+                }
                 const res = await fetch(`/api/messages/${encodeURIComponent(messageId)}/reply`, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ content, replyToUser, replyToId }),
+                    body: fd,
                 });
 
                 if (!res.ok) throw new Error("Error al enviar respuesta");
@@ -1246,6 +1420,56 @@ const forumApp = {
         if (m) m.style.display = "none";
     },
 
+    // Abre modal de adjunto con vista previa
+    openAttachmentModal(att) {
+        try {
+            const modal = document.getElementById("attachmentModal");
+            const preview = document.getElementById("attachmentPreview");
+            const download = document.getElementById("attachmentDownload");
+            if (!modal || !preview || !download) return;
+            preview.innerHTML = "";
+            const url = att.url;
+            const name = this.escapeHtml(att.name || "adjunto");
+            const type = att.type || "";
+            // Establecer destino de descarga
+            download.setAttribute("href", url);
+            download.setAttribute("download", name);
+            // Renderizar según tipo
+            if (/^image\//.test(type)) {
+                const img = document.createElement("img");
+                img.src = url;
+                img.alt = name;
+                img.style.maxWidth = "min(820px, 94vw)";
+                img.style.maxHeight = "56vh";
+                img.style.objectFit = "contain";
+                img.style.borderRadius = "12px";
+                preview.appendChild(img);
+            } else {
+                // Para otros tipos, mostrar icono y nombre y un iframe si es seguro (pdf)
+                const box = document.createElement("div");
+                box.style.display = "grid";
+                box.style.placeItems = "center";
+                box.style.gap = "10px";
+                const label = document.createElement("div");
+                label.textContent = name;
+                label.style.fontWeight = "700";
+                preview.appendChild(label);
+                if (/pdf$/i.test(name) || /application\/pdf/.test(type)) {
+                    const iframe = document.createElement("iframe");
+                    iframe.src = url;
+                    iframe.style.width = "min(820px, 94vw)";
+                    iframe.style.height = "56vh";
+                    iframe.style.border = "0";
+                    preview.appendChild(iframe);
+                }
+            }
+            this.openModal("#attachmentModal");
+        } catch (e) {
+            console.error("Error abriendo adjunto", e);
+            window.open(att.url, "_blank");
+        }
+    },
+
     openReplyModal(messageId, replyTo, replyToUser, replyToId) {
         this.el.replyMessageId.value = messageId;
         this.el.replyToUser.value = replyToUser || "";
@@ -1290,54 +1514,10 @@ window.addEventListener("storage", (e) => {
 
 // On forum page load, expand reply/message context if location.hash matches
 window.addEventListener("DOMContentLoaded", () => {
-    const hash = window.location.hash || "";
-
-    // Focus a message directly
-    const mMsg = hash.match(/^#msg-(.+)$/);
-    if (mMsg) {
-        const msgId = decodeURIComponent(mMsg[1]);
-        const postEl = document.querySelector(`#msg-${CSS.escape(msgId)}`);
-        if (postEl) {
-            postEl.scrollIntoView({ behavior: "smooth", block: "start" });
-            postEl.classList.add("pulse-highlight");
-            setTimeout(() => postEl.classList.remove("pulse-highlight"), 2000);
+    // Aplicar el mismo flujo de contexto (scroll + delay + fade) que usamos al abrir desde el modal
+    setTimeout(() => {
+        if (typeof forumApp.applyHashContext === "function") {
+            forumApp.applyHashContext();
         }
-        return; // nothing else to do
-    }
-
-    // Expand replies chain to reveal a nested reply and focus it
-    const mReply = hash.match(/^#reply-(.+)$/);
-    if (!mReply) return;
-    const replyId = decodeURIComponent(mReply[1]);
-
-    // Try to find the direct-thread root for this reply using any button carrying data-thread-root
-    const anyBtn = document.querySelector(`.btn-reply-to-reply[data-reply-id="${CSS.escape(replyId)}"], .btn-report-reply[data-reply-id="${CSS.escape(replyId)}"]`);
-    const threadRoot = anyBtn?.dataset.threadRoot;
-
-    // If we couldn't infer a thread root, fall back to assuming the replyId is a root id
-    const rootId = threadRoot || replyId;
-
-    // Ensure the sub-replies for the root are visible
-    const sub = document.querySelector(`.sub-replies[data-reply-id="${CSS.escape(rootId)}"]`);
-    if (sub) {
-        sub.style.display = "block";
-        const toggle = document.querySelector(`.btn-toggle-replies[data-reply-id="${CSS.escape(rootId)}"]`);
-        if (toggle) {
-            const cnt = sub.querySelectorAll(".reply").length;
-            toggle.textContent = `Ocultar respuestas (${cnt})`;
-        }
-    }
-
-    // Focus and highlight the specific reply block (the closest .reply ancestor of the button)
-    const targetBlock = anyBtn ? anyBtn.closest(".reply") : document.querySelector(`#reply-${CSS.escape(replyId)}`) || document.querySelector(`[data-reply-id="${CSS.escape(replyId)}"]`);
-    if (targetBlock) {
-        targetBlock.scrollIntoView({ behavior: "smooth", block: "start" });
-        targetBlock.style.outline = "2px solid var(--accent-2)";
-        setTimeout(() => {
-            targetBlock.style.outline = "";
-        }, 2000);
-    } else if (sub) {
-        // Fallback: scroll sub container if specific reply not found
-        sub.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    }, 0);
 });

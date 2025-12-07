@@ -167,6 +167,13 @@ main {
     border-radius: inherit;
     border: 2px solid var(--accent-2); /* solo línea roja */
     pointer-events: none;
+    opacity: 0;
+    transition: opacity 1200ms ease-in-out;
+}
+
+/* Visible (fade-in/out control) */
+.context-highlight.context-visible::after {
+    opacity: 1;
 }
 
 /* GLASS card */
@@ -307,6 +314,7 @@ label {
     padding: 12px 14px;
     display: grid;
     gap: 6px;
+    overflow: hidden; /* evita que los campos se desborden al redimensionarse */
 }
 .field input,
 .field textarea {
@@ -316,6 +324,21 @@ label {
     font-size: 15px;
     outline: none;
     width: 100%;
+    max-width: 100%; /* no permitir crecer fuera del contenedor */
+    box-sizing: border-box; /* incluir padding/border en el ancho */
+}
+/* Evitar que el usuario pueda redimensionar horizontalmente el textarea y que no se salga del contenedor */
+textarea {
+    resize: vertical; /* permitir solo vertical; o usar 'none' si quieres bloquear totalmente */
+    max-width: 100%;
+}
+
+/* En modales y formularios específicos, reforzar límites */
+.modal .content form textarea,
+.modal .content form input[type="text"],
+.modal .content form input[type="email"],
+.modal .content form input[type="password"] {
+    max-width: 100%;
 }
 /* Password reveal UI */
 .field .pw-wrap {
@@ -973,6 +996,34 @@ input[type="color"] {
     gap: 12px;
     overflow: auto;
     min-height: 0;
+}
+.modal#attachmentModal .content,
+#attachmentModal .content {
+    overflow-x: hidden; /* evita scroll horizontal */
+}
+
+/* Previsualización de adjuntos: adaptar al ancho del modal */
+#attachmentModal .attachment-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 100%;
+}
+#attachmentModal .attachment-preview img,
+#attachmentModal .attachment-preview video,
+#attachmentModal .attachment-preview iframe,
+#attachmentModal .attachment-preview embed,
+#attachmentModal .attachment-preview object {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+    border: none;
+    display: block;
+}
+#attachmentModal .attachment-preview iframe {
+    display: block;
 }
 .close {
     border: 0;
