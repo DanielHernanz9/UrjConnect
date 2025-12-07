@@ -66,16 +66,15 @@ function withAdmin(req, res, next) {
 router.get("/", (req, res) => {
     if (req.cookies && req.cookies.session_id) {
         const user = auth.authenticate(req.cookies.session_id);
-        
+
         if (user) {
-           
             const jsonUser = user.toJson();
-            if (user.isBanned()){
+            if (user.isBanned()) {
                 res.render("banned", { jsonUser });
-            }else{
+            } else {
                 res.render("index", { jsonUser });
             }
-           
+
             return;
         }
     }
@@ -147,7 +146,7 @@ router.post("/updateUser", withAuth, (req, res) => {
         const updated = forum.updatePostsForUser(user.email, { userName: user.name, userColor: user.color }, oldName);
         return res.json({ code: 0, updatedPosts: updated });
     } catch (e) {
-        console.error('Error updating forum posts for user:', e);
+        console.error("Error updating forum posts for user:", e);
         return res.json({ code: 0, updatedPosts: 0 });
     }
 });
@@ -360,118 +359,305 @@ router.post("/changePassword", withAuth, (req, res) => {
     });
 });
 // DELETE mensaje por id (autor o administradores)
-router.delete('/api/messages/:id', withAuth, async (req, res) => {
-  const messageId = req.params.id;
-  try {
-    const found = forum.findMessageById(messageId);
-    if (!found || !found.post) return res.status(404).json({ error: 'Not found' });
+router.delete("/api/messages/:id", withAuth, async (req, res) => {
+    const messageId = req.params.id;
+    try {
+        const found = forum.findMessageById(messageId);
+        if (!found || !found.post) return res.status(404).json({ error: "Not found" });
 
-    const post = found.post;
-    const user = req.user || null;
-    const isAdmin = user ? (user.isAdmin === true || user.role === 'admin') : false;
-    const isOwner = user && (post.userName === user.name || post.userEmail === user.email);
+        const post = found.post;
+        const user = req.user || null;
+        const isAdmin = user ? user.isAdmin === true || user.role === "admin" : false;
+        const isOwner = user && (post.userName === user.name || post.userEmail === user.email);
 
-    if (!isAdmin && !isOwner) return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdmin && !isOwner) return res.status(403).json({ error: "Forbidden" });
 
-    const deleted = forum.deleteMessage(messageId);
-    if (!deleted) return res.status(404).json({ error: 'Not found' });
+        const deleted = forum.deleteMessage(messageId);
+        if (!deleted) return res.status(404).json({ error: "Not found" });
 
-    res.json({ success: true, deleted });
-  } catch (err) {
-    console.error('Error deleting message:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
+        res.json({ success: true, deleted });
+    } catch (err) {
+        console.error("Error deleting message:", err);
+        res.status(500).json({ error: "Server error" });
+    }
 });
 
-// POST respuesta a un mensaje del foro
-router.post('/api/messages/:id/reply', withAuth, (req, res) => {
-  const messageId = req.params.id;
-  const { content, replyToUser, replyToId } = req.body || {};
-  
-  if (!content) {
-    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Falta contenido' } });
-  }
-  
-  const found = forum.findMessageById(messageId);
-  if (!found || !found.post) {
-    return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Mensaje no encontrado' } });
-  }
-  
-  const reply = {
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
-    content: String(content).trim().slice(0, 5000),
-    userName: req.user.name || req.user.email,
-    userEmail: req.user.email,
-    userColor: req.user.color || '#6366f1',
-    replyToUser: replyToUser || null,
-    replyToId: replyToId || null,
-    timestamp: new Date().toISOString()
-  };
-  
-  const added = forum.addReply(messageId, reply);
-  if (!added) {
-    return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Error al añadir respuesta' } });
-  }
-  
-  res.status(201).json(reply);
+// Reportar un mensaje (cualquier usuario autenticado)
+router.post("/api/messages/:id/report", withAuth, (req, res) => {
+    const messageId = req.params.id;
+    const reason = String(req.body.reason || "")
+        .trim()
+        .slice(0, 1000);
+
+    const found = forum.findMessageById(messageId);
+    if (!found || !found.post) return res.status(404).json({ error: { code: "NOT_FOUND", message: "Mensaje no encontrado" } });
+    // Evitar reportes duplicados por el mismo usuario
+    try {
+        if (forum.hasReport && forum.hasReport(messageId, req.user.email)) {
+            return res.status(409).json({ error: { code: "ALREADY_REPORTED", message: "Ya has reportado este mensaje" } });
+        }
+
+        const report = {
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+            messageId: String(messageId),
+            subjectId: found.post.subjectId || null,
+            reporterEmail: req.user.email,
+            reporterName: req.user.name || req.user.email,
+            reason,
+            timestamp: new Date().toISOString(),
+        };
+
+        const saved = forum.addReport(report);
+        if (!saved) return res.status(500).json({ error: { code: "SERVER", message: "No se pudo registrar el reporte" } });
+
+        res.status(201).json(report);
+    } catch (e) {
+        console.error("Error creando reporte:", e);
+        res.status(500).json({ error: { code: "SERVER", message: "Error creando reporte" } });
+    }
+});
+
+// Obtener reportes (solo administradores)
+router.get("/api/reports", withAuth, (req, res) => {
+    try {
+        const reports = forum.getReports();
+        // Mostrar solo reportes no resueltos
+        const activeReports = (reports || []).filter((r) => !r.resolved);
+        // Enriquecer con contexto del mensaje cuando esté disponible
+        // Enriquecer con contexto del mensaje y filtrar reportes cuyo mensaje ya no exista
+        const enriched = activeReports
+            .map((r) => {
+                const found = forum.findMessageById(r.messageId);
+                const msg =
+                    found && found.post
+                        ? {
+                              id: found.post.id,
+                              title: found.post.title,
+                              content: found.post.content,
+                              timestamp: found.post.timestamp,
+                              subjectId: found.post.subjectId,
+                              userName: found.post.userName || null,
+                              userEmail: found.post.userEmail || null,
+                          }
+                        : null;
+                // Si es un reporte de respuesta, incluir datos básicos de la respuesta
+                let reply = null;
+                if (msg && r.replyId) {
+                    const rep = forum.findReply(r.messageId, r.replyId);
+                    if (rep) {
+                        reply = {
+                            id: rep.id,
+                            content: rep.content,
+                            timestamp: rep.timestamp,
+                            userName: rep.userName || null,
+                            userEmail: rep.userEmail || null,
+                            replyToUser: rep.replyToUser || null,
+                        };
+                    }
+                }
+                return Object.assign({}, r, { message: msg, reply });
+            })
+            .filter((r) => r.message); // excluir reportes cuyo mensaje fue borrado
+        res.json(enriched);
+    } catch (e) {
+        console.error("Error getting reports:", e);
+        res.status(500).json({ error: { code: "SERVER", message: "Error recuperando reportes" } });
+    }
+});
+
+// Obtener mis reportes (solo para el usuario autenticado) -> útil para UI
+router.get("/api/reports/my", withAuth, (req, res) => {
+    try {
+        const all = forum.getReports();
+        // Solo devolver reportes activos (no resueltos) del usuario actual
+        const mine = (all || []).filter((r) => !r.resolved).filter((r) => r.reporterEmail && String(r.reporterEmail).toLowerCase() === String(req.user.email).toLowerCase());
+        res.json(mine);
+    } catch (e) {
+        console.error("Error getting reports:", e);
+        res.status(500).json({ error: { code: "SERVER", message: "Error recuperando reportes" } });
+    }
+});
+
+// Resolver un reporte (marcar como resuelto) - requiere admin
+router.post("/api/reports/:id/resolve", withAdmin, (req, res) => {
+    const id = req.params.id;
+    try {
+        if (!forum.markReportResolved) return res.status(501).json({ error: { code: "NOT_IMPLEMENTED" } });
+        const updated = forum.markReportResolved(id, req.user.email || null);
+        if (!updated) return res.status(404).json({ error: { code: "NOT_FOUND", message: "Reporte no encontrado" } });
+        return res.json(updated);
+    } catch (e) {
+        console.error("Error resolving report:", e);
+        return res.status(500).json({ error: { code: "SERVER", message: "Error marcando reporte" } });
+    }
+});
+
+// Eliminar un reporte (solo admin)
+router.delete("/api/reports/:id", withAdmin, (req, res) => {
+    const id = req.params.id;
+    try {
+        if (!forum.deleteReportById) return res.status(501).json({ error: { code: "NOT_IMPLEMENTED" } });
+        const ok = forum.deleteReportById(id);
+        if (!ok) return res.status(404).json({ error: { code: "NOT_FOUND" } });
+        return res.json({ success: true });
+    } catch (e) {
+        console.error("Error deleting report:", e);
+        return res.status(500).json({ error: { code: "SERVER", message: "Error borrando reporte" } });
+    }
+});
+
+// Resolver todos los reportes de un mensaje (marcar como resueltos) - requiere admin
+router.post("/api/reports/resolve-message/:messageId", withAdmin, (req, res) => {
+    const messageId = req.params.messageId;
+    try {
+        if (!forum.markReportsResolvedForMessage) return res.status(501).json({ error: { code: "NOT_IMPLEMENTED" } });
+        const result = forum.markReportsResolvedForMessage(messageId, req.user.email || null);
+        return res.json({ success: true, updated: result.updated });
+    } catch (e) {
+        console.error("Error resolving reports for message:", e);
+        return res.status(500).json({ error: { code: "SERVER", message: "Error marcando reportes" } });
+    }
+});
+
+// Publicar una respuesta a un mensaje
+router.post("/api/messages/:messageId/reply", withAuth, (req, res) => {
+    const messageId = req.params.messageId;
+    const { content, replyToUser, replyToId } = req.body || {};
+
+    if (!content) {
+        return res.status(400).json({ error: { code: "BAD_REQUEST", message: "Falta contenido" } });
+    }
+
+    const found = forum.findMessageById(messageId);
+    if (!found || !found.post) {
+        return res.status(404).json({ error: { code: "NOT_FOUND", message: "Mensaje no encontrado" } });
+    }
+
+    const reply = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+        content: String(content).trim().slice(0, 5000),
+        userName: req.user.name || req.user.email,
+        userEmail: req.user.email,
+        userColor: req.user.color || "#6366f1",
+        replyToUser: replyToUser || null,
+        replyToId: replyToId || null,
+        timestamp: new Date().toISOString(),
+    };
+
+    const added = forum.addReply(messageId, reply);
+    if (!added) {
+        return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Error al añadir respuesta" } });
+    }
+
+    res.status(201).json(reply);
+});
+
+// Reportar una respuesta concreta de un mensaje
+router.post("/api/messages/:messageId/reply/:replyId/report", withAuth, (req, res) => {
+    const { messageId, replyId } = req.params;
+    try {
+        const found = forum.findMessageById(messageId);
+        if (!found || !found.post) {
+            return res.status(404).json({ error: { code: "NOT_FOUND", message: "Mensaje no encontrado" } });
+        }
+        const reply = forum.findReply(messageId, replyId);
+        if (!reply) {
+            return res.status(404).json({ error: { code: "NOT_FOUND", message: "Respuesta no encontrada" } });
+        }
+
+        // Evitar duplicar reportes activos del mismo usuario
+        const already = forum.hasReportForReply(messageId, replyId, req.user.email);
+        if (already) {
+            return res.status(409).json({ error: { code: "ALREADY_REPORTED", message: "Ya has reportado esta respuesta" } });
+        }
+
+        const report = {
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+            messageId: String(messageId),
+            replyId: String(replyId),
+            reporterName: req.user.name || req.user.email,
+            reporterEmail: req.user.email,
+            subjectId: found.post.subjectId,
+            timestamp: new Date().toISOString(),
+            resolved: false,
+        };
+        const ok = forum.addReport(report);
+        if (!ok) return res.status(500).json({ error: { code: "SERVER", message: "Error al crear reporte" } });
+        return res.status(201).json(report);
+    } catch (e) {
+        console.error("Error reportando respuesta:", e);
+        return res.status(500).json({ error: { code: "SERVER", message: "Error del servidor" } });
+    }
+});
+
+// Resolver todos los reportes de una respuesta
+router.post("/api/reports/resolve-reply/:messageId/:replyId", withAuth, (req, res) => {
+    const { messageId, replyId } = req.params;
+    try {
+        const result = forum.markReportsResolvedForReply(messageId, replyId, req.user.email);
+        return res.json({ success: true, updated: result.updated });
+    } catch (e) {
+        console.error("Error resolviendo reportes de respuesta:", e);
+        return res.status(500).json({ error: { code: "SERVER", message: "Error marcando reportes" } });
+    }
 });
 
 // DELETE respuesta específica de un mensaje
-router.delete('/api/messages/:messageId/reply/:replyId', withAuth, async (req, res) => {
-  const { messageId, replyId } = req.params;
-  
-  try {
-    const found = forum.findMessageById(messageId);
-    if (!found || !found.post) {
-      return res.status(404).json({ error: 'Mensaje no encontrado' });
-    }
-    
-    const reply = forum.findReply(messageId, replyId);
-    if (!reply) {
-      return res.status(404).json({ error: 'Respuesta no encontrada' });
-    }
-    
-    const user = req.user || null;
-    const isAdmin = user ? (user.isAdmin === true || user.role === 'admin') : false;
-    const isOwner = user && (reply.userName === user.name || reply.userEmail === user.email);
-    
-    if (!isAdmin && !isOwner) {
-      return res.status(403).json({ error: 'No tienes permisos para borrar esta respuesta' });
-    }
-    
-    // Si no es admin y es una respuesta directa (sin replyToUser), verificar que no haya respuestas a ella
-    if (!isAdmin && !reply.replyToUser) {
-      const replies = found.post.replies || [];
-      // Verificar si hay respuestas que apunten a esta respuesta específica
-      const hasChildReplies = replies.some(r => {
-        if (r.id === replyId) return false; // No contar la misma respuesta
-        // Verificar por replyToId (nuevo sistema) - debe coincidir con el ID de esta respuesta
-        if (r.replyToId && r.replyToId === replyId) return true;
-        // Para sistema antiguo sin replyToId, solo contar si el nombre coincide Y es una respuesta
-        // que lógicamente debería pertenecer a este hilo (verificar timestamp)
-        if (!r.replyToId && r.replyToUser === reply.userName) {
-          // Solo contar si la respuesta es posterior a esta
-          if (new Date(r.timestamp) > new Date(reply.timestamp)) {
-            return true;
-          }
+router.delete("/api/messages/:messageId/reply/:replyId", withAuth, async (req, res) => {
+    const { messageId, replyId } = req.params;
+
+    try {
+        const found = forum.findMessageById(messageId);
+        if (!found || !found.post) {
+            return res.status(404).json({ error: "Mensaje no encontrado" });
         }
-        return false;
-      });
-      
-      if (hasChildReplies) {
-        return res.status(400).json({ error: 'No puedes borrar esta respuesta porque hay otras respuestas dirigidas a ella' });
-      }
+
+        const reply = forum.findReply(messageId, replyId);
+        if (!reply) {
+            return res.status(404).json({ error: "Respuesta no encontrada" });
+        }
+
+        const user = req.user || null;
+        const isAdmin = user ? user.isAdmin === true || user.role === "admin" : false;
+        const isOwner = user && (reply.userName === user.name || reply.userEmail === user.email);
+
+        if (!isAdmin && !isOwner) {
+            return res.status(403).json({ error: "No tienes permisos para borrar esta respuesta" });
+        }
+
+        // Si no es admin y es una respuesta directa (sin replyToUser), verificar que no haya respuestas a ella
+        if (!isAdmin && !reply.replyToUser) {
+            const replies = found.post.replies || [];
+            // Verificar si hay respuestas que apunten a esta respuesta específica
+            const hasChildReplies = replies.some((r) => {
+                if (r.id === replyId) return false; // No contar la misma respuesta
+                // Verificar por replyToId (nuevo sistema) - debe coincidir con el ID de esta respuesta
+                if (r.replyToId && r.replyToId === replyId) return true;
+                // Para sistema antiguo sin replyToId, solo contar si el nombre coincide Y es una respuesta
+                // que lógicamente debería pertenecer a este hilo (verificar timestamp)
+                if (!r.replyToId && r.replyToUser === reply.userName) {
+                    // Solo contar si la respuesta es posterior a esta
+                    if (new Date(r.timestamp) > new Date(reply.timestamp)) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+
+            if (hasChildReplies) {
+                return res.status(400).json({ error: "No puedes borrar esta respuesta porque hay otras respuestas dirigidas a ella" });
+            }
+        }
+        // Las respuestas con @ (reply.replyToUser existe) siempre se pueden borrar por el propietario
+
+        const deleted = forum.deleteReply(messageId, replyId);
+        if (!deleted) {
+            return res.status(500).json({ error: "Error al borrar la respuesta" });
+        }
+
+        res.json({ success: true, deleted });
+    } catch (err) {
+        console.error("Error deleting reply:", err);
+        res.status(500).json({ error: "Error del servidor" });
     }
-    // Las respuestas con @ (reply.replyToUser existe) siempre se pueden borrar por el propietario
-    
-    const deleted = forum.deleteReply(messageId, replyId);
-    if (!deleted) {
-      return res.status(500).json({ error: 'Error al borrar la respuesta' });
-    }
-    
-    res.json({ success: true, deleted });
-  } catch (err) {
-    console.error('Error deleting reply:', err);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
 });

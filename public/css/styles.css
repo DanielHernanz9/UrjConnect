@@ -50,7 +50,48 @@ body {
 }
 
 /* Ensure any background used does not tile visibly when scrolling */
-html,
+.report-card {
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-2);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+    margin-bottom: 12px;
+}
+.report-card-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+.report-card-meta {
+    color: var(--muted);
+    font-size: 13px;
+}
+.report-card-title {
+    font-size: 15px;
+    font-weight: 700;
+}
+.report-card-snippet {
+    color: var(--muted);
+    font-size: 14px;
+}
+.report-count-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    background: var(--chip);
+    border: 1px solid var(--chip-border);
+    border-radius: 999px;
+    color: var(--muted);
+}
+.report-count-badge .count {
+    font-weight: 700;
+    color: var(--text);
+}
+.btn.ban {
+    opacity: 0.8;
+}
 body {
     background-repeat: no-repeat;
     background-size: cover;
@@ -113,6 +154,19 @@ main {
     max-width: 1200px;
     margin: 0 auto;
     padding: 28px;
+}
+
+/* Context highlight: clean rounded border using a pseudo-element to avoid corner artifacts */
+.context-highlight {
+    position: relative;
+}
+.context-highlight::after {
+    content: "";
+    position: absolute;
+    inset: 0; /* exact element bounds */
+    border-radius: inherit;
+    border: 2px solid var(--accent-2); /* solo línea roja */
+    pointer-events: none;
 }
 
 /* GLASS card */
@@ -324,6 +378,29 @@ label {
     transform: translateY(-1px);
     box-shadow: 0 12px 30px rgba(202, 16, 46, 0.25);
     opacity: 1;
+}
+
+/* Report button state: keep visual appearance but prevent clicks when reported */
+.btn-report.reported {
+    pointer-events: none;
+    opacity: 1; /* keep same look */
+    cursor: default;
+}
+
+/* Small badge showing number of active reports for a message */
+.report-badge {
+    display: none;
+}
+.report-badge.many {
+    display: none;
+}
+
+/* reporters list inside the reports modal */
+.reporters-list div:last-child {
+    border-bottom: none;
+}
+.reporters-list .hint {
+    padding: 6px 0;
 }
 .btn.secondary {
     background: var(--chip);
@@ -1250,19 +1327,68 @@ input[type="color"] {
     box-shadow: 0 8px 22px rgba(202, 16, 46, 0.06);
 }
 
-/* Botones para responder a una respuesta concreta (más pequeños) */
-.btn-reply-to-reply {
-    padding: 4px 8px !important;
-    font-size: 12px !important;
+/* Botón 'Reportar' — estilo parecido al de Responder pero más sutil */
+.btn-report {
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+    border: 1px solid var(--border) !important;
+    background: transparent !important;
+    color: var(--muted) !important; /* menos llamativo que Responder */
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    transition: transform var(--speed) ease, box-shadow var(--speed) ease, background var(--speed) ease, color var(--speed) ease;
+}
+.btn-report:hover {
+    transform: translateY(-1px);
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.02));
+    color: var(--text) !important; /* texto oscuro para buena legibilidad */
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+.btn-report[disabled] {
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+    filter: grayscale(10%) !important;
+}
+
+/* Botón 'Reportar respuesta' — igual estilo que el botón de reportar del mensaje principal */
+.btn-report-reply {
+    padding: 6px 12px !important;
+    font-size: 13px !important;
     border: 1px solid var(--border) !important;
     background: transparent !important;
     color: var(--muted) !important;
-    border-radius: 6px !important;
+    border-radius: 8px !important;
     cursor: pointer !important;
+    transition: transform var(--speed) ease, box-shadow var(--speed) ease, background var(--speed) ease, color var(--speed) ease;
+}
+.btn-report-reply:hover {
+    transform: translateY(-1px);
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.02));
+    color: var(--text) !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+.btn-report-reply[disabled] {
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+    filter: grayscale(10%) !important;
+}
+
+/* Botón 'Responder' sobre respuestas anidadas — igual tamaño/estilo que otros botones de responder */
+.btn-reply-to-reply {
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+    border: 1px solid var(--border) !important;
+    background: transparent !important;
+    color: var(--accent-2) !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    transition: transform var(--speed) ease, box-shadow var(--speed) ease, background var(--speed) ease, color var(--speed) ease;
 }
 .btn-reply-to-reply:hover {
-    background: var(--chip) !important;
-    color: var(--text) !important;
+    transform: translateY(-1px);
+    background: linear-gradient(90deg, rgba(202, 16, 46, 0.12), rgba(202, 16, 46, 0.06));
+    color: white !important;
+    box-shadow: 0 8px 22px rgba(202, 16, 46, 0.06);
 }
 
 /* Toggle para ver/ocultar sub-respuestas */

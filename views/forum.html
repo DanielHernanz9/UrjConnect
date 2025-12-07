@@ -22,6 +22,7 @@
 
                 <div class="toolbar">
                     <button class="icon-btn" id="themeToggle" title="Cambiar tema">🌓 Tema</button>
+                    <button class="icon-btn" id="reportsBtn" title="Mensajes reportados" style="display: none">🚩 Reportes</button>
                     <div class="divider"></div>
 
                     <div class="profile">
@@ -62,10 +63,9 @@
                     <div class="forum-actions" style="display: flex; gap: 8px">
                         <button class="link forum-btn" id="backBtn" type="button" aria-label="Volver al inicio" onclick="window.location.href='/'">Volver al inicio</button>
                         <button class="link forum-btn" type="button" aria-label="Ver detalles de la asignatura" onclick="window.location.href='/subject/{{subject.id}}/details'">Ver detalles</button>
-                        
-                        <form id="deleteForumForm" action="/subject/{{subject.id}}/delete" method="POST" style="display: none; margin: 0;">
-                            <button class="btn forum-btn" type="submit" style="background: var(--accent-2); color: white;" 
-                                    onclick="return confirm('¿Estás seguro de que quieres eliminar este foro? Esta acción no se puede deshacer.')">
+
+                        <form id="deleteForumForm" action="/subject/{{subject.id}}/delete" method="POST" style="display: none; margin: 0">
+                            <button class="btn forum-btn" type="submit" style="background: var(--accent-2); color: white" onclick="return confirm('¿Estás seguro de que quieres eliminar este foro? Esta acción no se puede deshacer.')">
                                 Eliminar foro
                             </button>
                         </form>
@@ -100,14 +100,13 @@
                             <button class="btn" type="submit">Publicar mensaje</button>
                             <button class="btn secondary" type="reset">Limpiar</button>
                         </div>
-                        
                     </form>
                 </div>
             </section>
         </main>
 
         <!-- Modal de editar perfil -->
-       <div class="modal" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+        <div class="modal" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
             <div class="content glass">
                 <div class="body">
                     <h3 id="profileTitle" style="margin: 0 0 8px 0">Editar perfil</h3>
@@ -161,6 +160,23 @@
                             <button class="btn secondary" type="button" data-close="#replyModal">Cancelar</button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de reportes (admins) -->
+        <div class="modal" id="reportsModal" role="dialog" aria-modal="true" aria-labelledby="reportsTitle" style="display: none">
+            <div class="content glass" style="width: min(820px, 96vw)">
+                <div class="body">
+                    <h3 id="reportsTitle" style="margin: 0 0 8px 0">Mensajes reportados</h3>
+                    <div style="margin-top: 12px">
+                        <div id="reportsList" style="display: grid; gap: 10px; max-height: 60vh; overflow: auto">
+                            <!-- Contenido cargado dinámicamente -->
+                        </div>
+                    </div>
+                    <div class="actions" style="justify-content: flex-end; margin-top: 12px">
+                        <button class="btn secondary" data-close="#reportsModal">Cerrar</button>
+                    </div>
                 </div>
             </div>
         </div>
