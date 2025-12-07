@@ -163,7 +163,7 @@ main {
 .context-highlight::after {
     content: "";
     position: absolute;
-    inset: 0; /* exact element bounds */
+    inset: -1px; /* ligero offset para que el borde quede justo fuera del bloque */
     border-radius: inherit;
     border: 2px solid var(--accent-2); /* solo línea roja */
     pointer-events: none;
