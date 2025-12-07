@@ -90,9 +90,9 @@ const forumApp = {
             this.el.deleteForumForm.style.display = "block";
         }
 
-        // Mostrar botón de reportes para todos los usuarios autenticados (el contenido puede variar según permisos)
+        // Mostrar botón de reportes solo a administradores
         const reportsBtn = document.getElementById("reportsBtn");
-        if (reportsBtn) {
+        if (reportsBtn && this.user && this.user.role === "admin") {
             reportsBtn.style.display = "inline-flex";
             reportsBtn.addEventListener("click", async () => {
                 // abrir modal y cargar reportes
@@ -196,7 +196,7 @@ const forumApp = {
                                             ? `<button class="btn secondary report-action-ignore-reply" data-message-id="${msg.id}" data-reply-id="${g.reply.id}" title="Marcar como revisado">Dejar</button>`
                                             : `<button class="btn secondary report-action-ignore" data-message-id="${msg.id}" title="Marcar como revisado">Dejar</button>`
                                     }
-                                    <button class="btn ban report-action-ban" data-message-id="${msg.id}" title="Banear (no implementado)">Banear</button>
+                                    ${this.user && this.user.role === "admin" ? `<button class="btn ban report-action-ban" data-message-id="${msg.id}" data-user-email="${this.escapeHtml(msg.userEmail || "")}" title="Banear usuario">Banear</button>` : ``}
                                     ${
                                         isReply
                                             ? `<button class="btn report-action-delete-reply" data-message-id="${msg.id}" data-reply-id="${g.reply.id}" title="Borrar respuesta">Borrar</button>`
@@ -212,7 +212,7 @@ const forumApp = {
             });
 
             // Delegación para botones dentro de la lista (operan sobre messageId para grupos)
-            list.querySelectorAll(".report-action-context, .report-action-delete, .report-action-ignore, .report-action-view-reporters, .report-action-delete-reply, .report-action-ignore-reply").forEach((btn) => {
+            list.querySelectorAll(".report-action-context, .report-action-delete, .report-action-ignore, .report-action-view-reporters, .report-action-delete-reply, .report-action-ignore-reply, .report-action-ban").forEach((btn) => {
                 btn.addEventListener("click", (e) => {
                     const b = e.currentTarget;
                     if (b.classList.contains("report-action-context")) {
@@ -266,6 +266,27 @@ const forumApp = {
                             listEl.style.display = "none";
                             b.textContent = "Ver reportantes";
                         }
+                        } else if (b.classList.contains("report-action-ban")) {
+                        const userEmail = b.dataset.userEmail;
+                        if (!userEmail) return toast("No se puede banear: falta email del usuario");
+                        if (!confirm(`¿Banear al usuario ${userEmail}? Esta acción marcará su cuenta como suspendida.`)) return;
+                        fetch("/api/users/ban", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ email: userEmail }),
+                        })
+                            .then(async (r) => {
+                                if (!r.ok) {
+                                    const err = await r.json().catch(() => ({}));
+                                    return Promise.reject(err || { message: "Error" });
+                                }
+                                toast("Usuario baneado");
+                                await this.fetchAndRenderReports();
+                            })
+                            .catch((err) => {
+                                console.error("Error baneando usuario desde modal:", err);
+                                toast(err && err.error && err.error.message ? err.error.message : "Error al banear usuario");
+                            });
                     } else if (b.classList.contains("report-action-delete")) {
                         const messageId = b.dataset.messageId;
                         if (!messageId) return toast("ID de mensaje no disponible");
