@@ -49,6 +49,20 @@ body {
     overflow-x: hidden;
 }
 
+/* Ensure any background used does not tile visibly when scrolling */
+html,
+body {
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-attachment: fixed;
+}
+
+/* Aurora overlay: avoid any tiling and make it cover the viewport */
+.aurora::before {
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
 .aurora {
     position: fixed;
     inset: 0;
@@ -1027,6 +1041,14 @@ input[type="color"] {
     box-shadow: 0 8px 20px rgba(44, 40, 38, 0.06);
 }
 
+/* Disable hover effect on post cards: keep posts static (no lift or shadow) */
+.posts .post:hover,
+.post:hover {
+    border-color: var(--chip-border) !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
 /* Header del post (avatar + nombre + fecha) */
 .post-header {
     display: flex;
@@ -1204,6 +1226,156 @@ input[type="color"] {
     transform: translateY(-1px);
     box-shadow: 0 12px 30px rgba(202, 16, 46, 0.18);
     opacity: 1;
+}
+
+/* Responder / borrar respuestas (foro) */
+/* Botón principal 'Responder' que aparece en cada mensaje */
+.post-actions .btn-reply,
+.btn-reply {
+    /* usar !important para sobreescribir estilos inline presentes en el markup */
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+    border: 1px solid var(--border) !important;
+    background: transparent !important;
+    color: var(--accent-2) !important; /* destaca como acción positiva */
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    transition: transform var(--speed) ease, box-shadow var(--speed) ease, background var(--speed) ease, color var(--speed) ease;
+}
+.post-actions .btn-reply:hover,
+.btn-reply:hover {
+    transform: translateY(-1px);
+    background: linear-gradient(90deg, rgba(202, 16, 46, 0.12), rgba(202, 16, 46, 0.06));
+    color: white !important;
+    box-shadow: 0 8px 22px rgba(202, 16, 46, 0.06);
+}
+
+/* Botones para responder a una respuesta concreta (más pequeños) */
+.btn-reply-to-reply {
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    border: 1px solid var(--border) !important;
+    background: transparent !important;
+    color: var(--muted) !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+}
+.btn-reply-to-reply:hover {
+    background: var(--chip) !important;
+    color: var(--text) !important;
+}
+
+/* Toggle para ver/ocultar sub-respuestas */
+.btn-toggle-replies {
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    border: 1px solid var(--border) !important;
+    background: transparent !important;
+    color: var(--accent-2) !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+}
+.btn-toggle-replies:hover {
+    background: linear-gradient(90deg, rgba(202, 16, 46, 0.08), rgba(202, 16, 46, 0.03));
+    color: white !important;
+}
+
+/* Keep reply-button hover text readable on light theme */
+[data-theme="light"] .post-actions .btn-reply:hover,
+[data-theme="light"] .btn-reply:hover,
+[data-theme="light"] .btn-reply-to-reply:hover,
+[data-theme="light"] .btn-toggle-replies:hover {
+    /* use the page text color (dark) for contrast on light backgrounds */
+    color: var(--text) !important;
+    /* soften the hover background for light theme */
+    background: linear-gradient(90deg, rgba(202, 16, 46, 0.06), rgba(202, 16, 46, 0.02));
+}
+
+/* Botón para borrar una respuesta (ícono de papelera) */
+.btn-delete-reply {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    border: 1px solid var(--accent-2) !important;
+    background: transparent !important;
+    color: var(--accent-2) !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    transition: background var(--speed) ease, color var(--speed) ease, transform var(--speed) ease;
+}
+.btn-delete-reply:hover {
+    background: var(--accent-2) !important;
+    color: white !important;
+    transform: translateY(-1px);
+}
+
+/* Hacer que el botón de borrar respuesta se vea igual que el de borrar mensaje principal */
+.btn-delete-reply {
+    /* Basado en .post-header .btn-delete-post */
+    border: 0 !important;
+    background: var(--accent-2) !important;
+    color: white !important;
+    padding: 6px 10px !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    box-shadow: 0 8px 25px rgba(202, 16, 46, 0.12) !important;
+}
+.btn-delete-reply:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 30px rgba(202, 16, 46, 0.18) !important;
+    opacity: 1 !important;
+}
+
+/* Estilos para las respuestas: menos indentación y mejor espaciado */
+.replies-container {
+    margin-top: 12px;
+}
+.reply-thread {
+    margin-bottom: 12px !important;
+    margin-left: 8px !important; /* reducir espacio exterior */
+    padding-left: 12px !important; /* mantener separación con la barra */
+    border-left-width: 3px !important;
+}
+.reply {
+    background: linear-gradient(180deg, var(--glass-2), var(--glass));
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px !important;
+    margin-bottom: 8px !important;
+    display: block;
+}
+
+.reply > div:first-child {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-bottom: 8px !important;
+}
+
+.reply .avatar {
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: 6px !important;
+    flex-shrink: 0 !important;
+    font-size: 12px !important;
+}
+
+/* Contenido de la respuesta: ocupar espacio restante y evitar estar muy a la derecha */
+.reply > div:nth-child(2) {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    color: var(--muted) !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+}
+
+/* (removed empty rule for nested reply containers) */
+
+/* Ajustes para sub-replies container */
+.sub-replies {
+    margin-left: 8px !important;
+    padding-left: 8px !important;
+    border-left: 2px solid var(--border) !important;
 }
 
 /* Respetar preferencias de movimiento reducido */
