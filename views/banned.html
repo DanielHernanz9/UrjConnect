@@ -40,18 +40,15 @@
                 </div>
             </header>
 
-            <section id="BannedMessage" style="display: flex; justify-content: center; align-items: flex-start; padding-top: 48px; min-height: calc(100vh - 48px);">
-                <div class="container glass" style="max-width:1100px; width: min(1100px, 92vw); padding: 36px; border-radius: 12px; text-align: center;">
-                    <h1 style="font-size: 42px; font-weight: 700; color: red;">Cuenta suspendida</h1>
-                    <p style="margin-top: 20px; font-size: 18px; line-height: 1.6;">Tu cuenta ha sido <span style="color: red;">suspendida</span>. Si crees que se trata de un error, por favor contacta con el soporte.</p>
-                    <div style="margin-top:24px; display:flex; justify-content:center; gap:12px;">
-                        <button id="bannedLogoutBtn" type="button" class="btn" style="background:#dc2626; border-color: rgba(0,0,0,0.1);">Cerrar sesión</button>
+            <section id="BannedMessage" style="display: flex; justify-content: center; align-items: flex-start; padding-top: 48px; min-height: calc(100vh - 48px)">
+                <div class="container glass" style="max-width: 1100px; width: min(1100px, 92vw); padding: 36px; border-radius: 12px; text-align: center">
+                    <h1 style="font-size: 42px; font-weight: 700; color: red">Cuenta suspendida</h1>
+                    <p style="margin-top: 20px; font-size: 18px; line-height: 1.6">Tu cuenta ha sido <span style="color: red">suspendida</span>. Si crees que se trata de un error, por favor contacta con el soporte.</p>
+                    <div style="margin-top: 24px; display: flex; justify-content: center; gap: 12px">
+                        <button id="bannedLogoutBtn" type="button" class="btn">Cerrar sesión</button>
                     </div>
                 </div>
             </section>
-
-    
-
         </main>
 
         <!-- Modal de editar perfil -->
@@ -97,17 +94,17 @@
         {{/jsonUser}}
 
         <script src="/app.js"></script>
-        
+
         <script>
             // Logout via fetch to avoid full form submit/reload and ensure cookie cleared
-            document.getElementById('bannedLogoutBtn')?.addEventListener('click', async (e) => {
+            document.getElementById("bannedLogoutBtn")?.addEventListener("click", async (e) => {
                 try {
-                    await fetch('/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+                    await fetch("/logout", { method: "POST", headers: { "Content-Type": "application/json" } });
                 } catch (err) {
                     // ignore
                 }
                 // Redirect to home after logout
-                window.location.href = '/';
+                window.location.href = "/";
             });
         </script>
 

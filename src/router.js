@@ -306,7 +306,13 @@ router.get("/subject/:id/forum", withAuth, (req, res) => {
     // Enviar el usuario completo (incluye role) para que el cliente pueda mostrar acciones de admin
     const jsonUser = req.user.toJson();
 
-    res.render("forum", { subject, jsonUser });
+    // Inicial de la asignatura para fallback de icono (plantilla no soporta indexado {{name.[0]}})
+    const subjectInitial = String(subject.name || subject.title || "?")
+        .trim()
+        .charAt(0)
+        .toUpperCase();
+
+    res.render("forum", { subject, subjectInitial, jsonUser });
 });
 
 // Publicar un mensaje en el foro de una asignatura

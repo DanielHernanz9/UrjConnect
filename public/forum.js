@@ -9,12 +9,17 @@ const PRESET_COLORS = ["#6366f1", "#06b6d4", "#22c55e", "#f59e0b", "#ec4899", "#
 
 const store = {
     getSession() {
-        return JSON.parse(sessionStorage.getItem("session") || "null");
+        try {
+            return JSON.parse(sessionStorage.getItem("session") || "null");
+        } catch {
+            return null;
+        }
     },
 
-    // ...existing code...
+    // Permite string (JSON) u objeto
     setSession(user) {
-        sessionStorage.setItem("session", user);
+        const payload = typeof user === "string" ? user : JSON.stringify(user || null);
+        sessionStorage.setItem("session", payload);
     },
     clearSession() {
         sessionStorage.removeItem("session");
@@ -70,6 +75,23 @@ const forumApp = {
     },
     user: null,
     subject: null,
+
+    // Muestra el hint de "Aún no hay mensajes" si no queda ningún post renderizado
+    updateEmptyHint() {
+        try {
+            const container = this.el.postsContainer;
+            if (!container) return;
+            const hasPosts = container.querySelectorAll && container.querySelectorAll(".post").length > 0;
+            if (!hasPosts) {
+                container.innerHTML = `
+                    <div class="hint" style="padding: 24px; text-align: center">
+                        <p style="margin: 0">Aún no hay mensajes en este foro.</p>
+                        <p style="margin: 8px 0 0; font-size: 13px">¡Sé el primero en publicar algo!</p>
+                    </div>
+                `;
+            }
+        } catch (e) {}
+    },
 
     init() {
         this.user = store.getSession();
@@ -328,6 +350,8 @@ const forumApp = {
                                 try {
                                     const postEl = document.querySelector(`#msg-${CSS.escape(messageId)}`);
                                     if (postEl) postEl.remove();
+                                    // Si ya no quedan mensajes, mostrar el hint sin recargar
+                                    this.updateEmptyHint && this.updateEmptyHint();
                                 } catch (e) {}
                                 await this.fetchAndRenderReports();
                             })
@@ -951,7 +975,8 @@ const forumApp = {
     },
 
     escapeHtml(str) {
-        return str.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+        const s = str == null ? "" : String(str);
+        return s.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
     },
 
     async updateUser() {
@@ -1074,8 +1099,6 @@ const forumApp = {
                 });
                 if (!res.ok) throw new Error("Error publicando");
                 const created = await res.json();
-                // Añadir al inicio y re-renderizar
-                const current = Array.from(this.el.postsContainer.querySelectorAll(".post")).length > 0 ? [] : null;
                 // Recargar lista completa para mantener orden desde server
                 const rPosts = await fetch(`/api/subjects/${this.subject.id}/posts`);
                 const messages = rPosts.ok ? await rPosts.json() : [];
@@ -1445,11 +1468,7 @@ const forumApp = {
                 img.style.borderRadius = "12px";
                 preview.appendChild(img);
             } else {
-                // Para otros tipos, mostrar icono y nombre y un iframe si es seguro (pdf)
-                const box = document.createElement("div");
-                box.style.display = "grid";
-                box.style.placeItems = "center";
-                box.style.gap = "10px";
+                // Para otros tipos, mostrar nombre y un iframe si es seguro (pdf)
                 const label = document.createElement("div");
                 label.textContent = name;
                 label.style.fontWeight = "700";

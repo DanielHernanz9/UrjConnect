@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;700;800;900&display=swap");
+
 :root {
     --radius: 16px;
     --radius-lg: 22px;
@@ -42,11 +44,42 @@ body {
 }
 body {
     margin: 0;
-    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+    /* Tipografía global: Public Sans en toda la app */
+    font-family: "Public Sans", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
     color: var(--text);
     background: radial-gradient(1200px at 20% 20%, rgba(202, 16, 46, 0.07), transparent 70%), radial-gradient(1000px at 80% 40%, rgba(202, 16, 46, 0.05), transparent 70%), radial-gradient(900px at 40% 70%, rgba(202, 16, 46, 0.06), transparent 70%),
         radial-gradient(800px at 70% 90%, rgba(202, 16, 46, 0.05), transparent 70%), var(--bg);
     overflow-x: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+    font-family: inherit !important;
+    font-weight: inherit !important;
+}
+
+button {
+    font-size: 13px !important;
+}
+
+.btn,
+.btn.secondary,
+.icon-btn,
+.link,
+.enter,
+.btn-reply,
+.btn-report,
+.btn-report-reply,
+.btn-reply-to-reply,
+.btn-toggle-replies,
+.btn-delete-post,
+.btn-delete-reply,
+.profile-btn,
+.fav-toggle,
+.pw-toggle {
+    font-family: inherit !important;
 }
 
 /* Ensure any background used does not tile visibly when scrolling */
@@ -367,7 +400,7 @@ textarea {
 }
 .pw-toggle:hover {
     color: var(--text);
-    filter: brightness(1.06);
+    filter: none; /* sin efectos */
 }
 .pw-toggle svg {
     width: 18px;
@@ -388,18 +421,19 @@ textarea {
     border: 0;
     background: var(--accent-2);
     color: white;
-    padding: 12px 16px;
-    border-radius: 12px;
-    font-weight: 700;
-    letter-spacing: 0.2px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-weight: 500; /* sin negrita */
+    font-size: 13px; /* ajuste más legible */
+    letter-spacing: 0;
     cursor: pointer;
-    transition: transform var(--speed) ease, box-shadow var(--speed) ease, opacity var(--speed) ease;
-    box-shadow: 0 8px 25px rgba(202, 16, 46, 0.2);
-    opacity: 0.9;
+    transition: none; /* sin fades/animaciones */
+    box-shadow: none; /* sin sombras */
+    opacity: 1;
 }
 .btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 12px 30px rgba(202, 16, 46, 0.25);
+    transform: none;
+    box-shadow: none;
     opacity: 1;
 }
 
@@ -430,7 +464,8 @@ textarea {
     color: var(--text);
     border: 1px solid var(--chip-border);
     box-shadow: none;
-    font-weight: 700;
+    font-weight: 500;
+    font-size: 13px;
 }
 .hint {
     color: var(--muted);
@@ -520,14 +555,16 @@ textarea {
     background: var(--chip);
     color: var(--text);
     padding: 10px 12px;
-    border-radius: 12px;
+    border-radius: 10px;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    font-weight: 500;
+    font-size: 13px;
 }
 .icon-btn:hover {
-    filter: brightness(1.1);
+    filter: none; /* sin efectos */
 }
 .divider {
     width: 1px;
@@ -536,13 +573,13 @@ textarea {
     margin: 0 4px;
 }
 .toolbar .icon-btn {
-    font-size: 14px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 500;
     line-height: 1;
 }
 @media (min-width: 860px) {
     .toolbar .icon-btn {
-        font-size: 15px;
+        font-size: 14px;
     }
 }
 
@@ -798,6 +835,8 @@ y aspecto más oscuro (para compatibilidad con casos puntuales) */
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    font-weight: 500;
+    font-size: 13px;
 }
 
 .fav-toggle:hover {
@@ -826,12 +865,12 @@ y aspecto más oscuro (para compatibilidad con casos puntuales) */
 .cta .enter {
     opacity: 1;
     cursor: pointer;
-    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    transition: none;
 }
 .cta .link:hover,
 .cta .enter:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+    transform: none;
+    box-shadow: none;
 }
 .link {
     border: 0;
@@ -839,21 +878,23 @@ y aspecto más oscuro (para compatibilidad con casos puntuales) */
     color: var(--text);
     border: 1px solid var(--chip-border);
     padding: 10px 12px;
-    border-radius: 12px;
-    font-weight: 700;
+    border-radius: 10px;
+    font-weight: 500;
+    font-size: 13px;
 }
 .link:hover {
-    filter: brightness(1.08);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+    filter: none;
+    transform: none;
+    box-shadow: none;
 }
 .enter {
     border: 0;
     background: var(--accent-2);
     color: white;
     padding: 10px 14px;
-    border-radius: 12px;
-    font-weight: 900;
+    border-radius: 10px;
+    font-weight: 500;
+    font-size: 13px;
 }
 
 /* Favorites dropdown */
@@ -866,8 +907,8 @@ y aspecto más oscuro (para compatibilidad con casos puntuales) */
     border: 1px solid var(--chip-border);
     border-radius: 999px;
     color: var(--muted);
-    font-size: 14px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 500;
 }
 .fav-panel > .icon-btn:hover,
 .fav-panel > .icon-btn.active {
@@ -1259,24 +1300,41 @@ input[type="file"] {
     color: var(--muted);
 }
 input[type="file"]::file-selector-button {
-    border: 0;
-    background: var(--accent-2);
-    color: white;
-    padding: 12px 16px; /* igual que los botones principales */
-    border-radius: 12px;
-    font-weight: normal; /* sin negrita: misma letra que el resto del texto */
-    letter-spacing: 0.2px;
+    border: 1px solid var(--chip-border);
+    background: var(--chip);
+    color: var(--muted); /* menos contraste para que no desentone */
+    padding: 6px 10px; /* más pequeño */
+    border-radius: 8px;
+    font-size: 13px; /* más legible */
+    font-weight: normal; /* sin negrita */
+    letter-spacing: 0;
     cursor: pointer;
-    transition: transform var(--speed) ease, box-shadow var(--speed) ease, opacity var(--speed) ease;
-    box-shadow: 0 8px 25px rgba(202, 16, 46, 0.2);
+    transition: background var(--speed) ease, border-color var(--speed) ease, filter var(--speed) ease;
+    box-shadow: none;
 }
 input[type="file"]::file-selector-button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 12px 30px rgba(202, 16, 46, 0.25);
+    filter: brightness(1.06);
 }
-/* En temas claros, refinar el fondo del botón si se prefiere más contraste */
+/* Compatibilidad Safari/WebKit */
+input[type="file"]::-webkit-file-upload-button {
+    border: 1px solid var(--chip-border);
+    background: var(--chip);
+    color: var(--muted);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: normal;
+    letter-spacing: 0;
+    cursor: pointer;
+    transition: background var(--speed) ease, border-color var(--speed) ease, filter var(--speed) ease;
+    box-shadow: none;
+}
+input[type="file"]::-webkit-file-upload-button:hover {
+    filter: brightness(1.06);
+}
+/* En temas claros, sin saturación extra para mantener sutileza */
 [data-theme="light"] input[type="file"]::file-selector-button {
-    filter: saturate(110%);
+    filter: none;
 }
 /* Integración dentro de .field */
 .field input[type="file"] {
@@ -1373,15 +1431,16 @@ input[type="file"]::file-selector-button:hover {
     color: white;
     padding: 8px 10px;
     border-radius: 10px;
-    font-weight: 700;
+    font-weight: 500;
+    font-size: 13px;
     cursor: pointer;
-    transition: transform var(--speed) ease, box-shadow var(--speed) ease, opacity var(--speed) ease;
-    box-shadow: 0 8px 25px rgba(202, 16, 46, 0.12);
-    opacity: 0.95;
+    transition: none;
+    box-shadow: none;
+    opacity: 1;
 }
 .post-header .btn-delete-post:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 12px 30px rgba(202, 16, 46, 0.18);
+    transform: none;
+    box-shadow: none;
     opacity: 1;
 }
 
@@ -1397,14 +1456,15 @@ input[type="file"]::file-selector-button:hover {
     color: var(--accent-2) !important; /* destaca como acción positiva */
     border-radius: 8px !important;
     cursor: pointer !important;
-    transition: transform var(--speed) ease, box-shadow var(--speed) ease, background var(--speed) ease, color var(--speed) ease;
+    transition: none !important;
+    font-weight: 500 !important;
 }
 .post-actions .btn-reply:hover,
 .btn-reply:hover {
-    transform: translateY(-1px);
-    background: linear-gradient(90deg, rgba(202, 16, 46, 0.12), rgba(202, 16, 46, 0.06));
-    color: white !important;
-    box-shadow: 0 8px 22px rgba(202, 16, 46, 0.06);
+    transform: none;
+    background: transparent !important;
+    color: var(--accent-2) !important;
+    box-shadow: none !important;
 }
 
 /* Botón 'Reportar' — estilo parecido al de Responder pero más sutil */
@@ -1416,13 +1476,14 @@ input[type="file"]::file-selector-button:hover {
     color: var(--muted) !important; /* menos llamativo que Responder */
     border-radius: 8px !important;
     cursor: pointer !important;
-    transition: transform var(--speed) ease, box-shadow var(--speed) ease, background var(--speed) ease, color var(--speed) ease;
+    transition: none !important;
+    font-weight: 500 !important;
 }
 .btn-report:hover {
-    transform: translateY(-1px);
-    background: linear-gradient(90deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.02));
-    color: var(--text) !important; /* texto oscuro para buena legibilidad */
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+    transform: none;
+    background: transparent !important;
+    color: var(--muted) !important;
+    box-shadow: none !important;
 }
 .btn-report[disabled] {
     opacity: 0.55 !important;
@@ -1439,13 +1500,14 @@ input[type="file"]::file-selector-button:hover {
     color: var(--muted) !important;
     border-radius: 8px !important;
     cursor: pointer !important;
-    transition: transform var(--speed) ease, box-shadow var(--speed) ease, background var(--speed) ease, color var(--speed) ease;
+    transition: none !important;
+    font-weight: 500 !important;
 }
 .btn-report-reply:hover {
-    transform: translateY(-1px);
-    background: linear-gradient(90deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.02));
-    color: var(--text) !important;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+    transform: none;
+    background: transparent !important;
+    color: var(--muted) !important;
+    box-shadow: none !important;
 }
 .btn-report-reply[disabled] {
     opacity: 0.55 !important;
@@ -1462,19 +1524,20 @@ input[type="file"]::file-selector-button:hover {
     color: var(--accent-2) !important;
     border-radius: 8px !important;
     cursor: pointer !important;
-    transition: transform var(--speed) ease, box-shadow var(--speed) ease, background var(--speed) ease, color var(--speed) ease;
+    transition: none !important;
+    font-weight: 500 !important;
 }
 .btn-reply-to-reply:hover {
-    transform: translateY(-1px);
-    background: linear-gradient(90deg, rgba(202, 16, 46, 0.12), rgba(202, 16, 46, 0.06));
-    color: white !important;
-    box-shadow: 0 8px 22px rgba(202, 16, 46, 0.06);
+    transform: none;
+    background: transparent !important;
+    color: var(--accent-2) !important;
+    box-shadow: none !important;
 }
 
 /* Toggle para ver/ocultar sub-respuestas */
 .btn-toggle-replies {
     padding: 4px 8px !important;
-    font-size: 12px !important;
+    font-size: 13px !important;
     border: 1px solid var(--border) !important;
     background: transparent !important;
     color: var(--accent-2) !important;
@@ -1482,8 +1545,8 @@ input[type="file"]::file-selector-button:hover {
     cursor: pointer !important;
 }
 .btn-toggle-replies:hover {
-    background: linear-gradient(90deg, rgba(202, 16, 46, 0.08), rgba(202, 16, 46, 0.03));
-    color: white !important;
+    background: transparent !important;
+    color: var(--accent-2) !important;
 }
 
 /* Keep reply-button hover text readable on light theme */
@@ -1491,27 +1554,26 @@ input[type="file"]::file-selector-button:hover {
 [data-theme="light"] .btn-reply:hover,
 [data-theme="light"] .btn-reply-to-reply:hover,
 [data-theme="light"] .btn-toggle-replies:hover {
-    /* use the page text color (dark) for contrast on light backgrounds */
-    color: var(--text) !important;
-    /* soften the hover background for light theme */
-    background: linear-gradient(90deg, rgba(202, 16, 46, 0.06), rgba(202, 16, 46, 0.02));
+    color: var(--accent-2) !important;
+    background: transparent !important;
 }
 
 /* Botón para borrar una respuesta (ícono de papelera) */
 .btn-delete-reply {
     padding: 4px 8px !important;
-    font-size: 11px !important;
+    font-size: 13px !important;
     border: 1px solid var(--accent-2) !important;
     background: transparent !important;
     color: var(--accent-2) !important;
     border-radius: 6px !important;
     cursor: pointer !important;
-    transition: background var(--speed) ease, color var(--speed) ease, transform var(--speed) ease;
+    transition: none !important;
+    font-weight: 500 !important;
 }
 .btn-delete-reply:hover {
     background: var(--accent-2) !important;
     color: white !important;
-    transform: translateY(-1px);
+    transform: none !important;
 }
 
 /* Hacer que el botón de borrar respuesta se vea igual que el de borrar mensaje principal */
@@ -1522,13 +1584,14 @@ input[type="file"]::file-selector-button:hover {
     color: white !important;
     padding: 6px 10px !important;
     border-radius: 10px !important;
-    font-weight: 700 !important;
+    font-weight: 500 !important;
+    font-size: 13px !important;
     cursor: pointer !important;
-    box-shadow: 0 8px 25px rgba(202, 16, 46, 0.12) !important;
+    box-shadow: none !important;
 }
 .btn-delete-reply:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 12px 30px rgba(202, 16, 46, 0.18) !important;
+    transform: none !important;
+    box-shadow: none !important;
     opacity: 1 !important;
 }
 
@@ -1541,6 +1604,14 @@ input[type="file"]::file-selector-button:hover {
     margin-left: 8px !important; /* reducir espacio exterior */
     padding-left: 12px !important; /* mantener separación con la barra */
     border-left-width: 3px !important;
+}
+
+/* Tarjeta del formulario de editar contraseña */
+.edit-card {
+    padding: 22px;
+    border-radius: var(--radius);
+    width: min(640px, 94vw);
+    margin: 0 auto;
 }
 .reply {
     background: linear-gradient(180deg, var(--glass-2), var(--glass));
