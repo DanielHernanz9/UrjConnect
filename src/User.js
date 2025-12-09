@@ -9,7 +9,7 @@ if (!fs.existsSync(USERS_DIR)) {
 }
 
 export default class User {
-    constructor(email, password, name, bio, color, favourites, role, banned = false) {
+    constructor(email, password, name, bio, color, favourites, role, banned = false,banned_finish_date = null) {
         this.email = email
         this.password = password
         this.name = name
@@ -18,6 +18,7 @@ export default class User {
         this.favourites = favourites
         this.role = role
         this.banned = !!banned
+        this.banned_finish_date = banned_finish_date
     }
 
     isRole(role) {
@@ -29,11 +30,32 @@ export default class User {
     }
 
     isBanned() {
-        return !!this.banned;
+        if (!this.banned) return false;
+        // Si hay fecha de fin, verificar si ya expiró
+        if (this.banned_finish_date) {
+            const now = new Date();
+            const finishDate = new Date(this.banned_finish_date);
+            if (now > finishDate) {
+                // Desbanear automáticamente
+                this.banned = false;
+                this.banned_finish_date = null;
+                this.saveToFile();
+                return false;
+            }
+        }
+        return true;
     }
 
-    setBanned(flag) {
+    setBanned(flag, durationMs = null) {
         this.banned = flag;
+        if (flag && durationMs) {
+            // Baneo temporal: calcular fecha de fin
+            const now = new Date();
+            this.banned_finish_date = new Date(now.getTime() + durationMs).toISOString();
+        } else {
+            // Baneo permanente o desbanear
+            this.banned_finish_date = null;
+        }
         this.saveToFile();
     }
 
@@ -91,7 +113,7 @@ export default class User {
             return 11;
         }
         const hashedPassword = bcrypt.hashSync(password, 10)
-        const o = new User(email, hashedPassword, name, bio, DEFAULT_COLOR, new Set(), "user", false);
+        const o = new User(email, hashedPassword, name, bio, DEFAULT_COLOR, new Set(), "user");
         o.saveToFile();
         return o;
     }
@@ -119,6 +141,6 @@ export default class User {
             return 1
         }
         const json = JSON.parse(fs.readFileSync(USERS_DIR + email));
-        return new User(json.email, json.password, json.name, json.bio, json.color, new Set(json.favourites), json.role, json.banned ?? false);
+        return new User(json.email, json.password, json.name, json.bio, json.color, new Set(json.favourites), json.role, json.banned ?? false, json.banned_finish_date ?? null);
     }
 }

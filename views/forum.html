@@ -222,6 +222,68 @@
             </div>
         </div>
 
+        <!-- Modal de duración de baneo -->
+        <div class="modal" id="banDurationModal" role="dialog" aria-modal="true" aria-labelledby="banDurationTitle">
+            <div class="content glass">
+                <div class="head">
+                    <h2 id="banDurationTitle" style="margin: 0; font-size: 18px; font-weight: 700">⏱️ Duración del baneo</h2>
+                    <button class="icon-btn" id="closeBanModal" aria-label="Cerrar modal">✕</button>
+                </div>
+                <div class="body">
+                    <div class="ban-user-info">
+                        <div style="font-size: 13px; color: var(--muted); margin-bottom: 4px;">Usuario a banear:</div>
+                        <div class="ban-user-email" id="banUserEmail">usuario@ejemplo.com</div>
+                    </div>
+                    
+                    <div class="ban-duration-options" id="banDurationOptions">
+                        <div class="ban-option" data-hours="1">
+                            <div>
+                                <div class="ban-option-label">1 hora</div>
+                                <div class="ban-option-desc">Baneo temporal corto</div>
+                            </div>
+                            <div class="ban-option-icon">⏰</div>
+                        </div>
+                        
+                        <div class="ban-option" data-hours="24">
+                            <div>
+                                <div class="ban-option-label">24 horas</div>
+                                <div class="ban-option-desc">Baneo de 1 día</div>
+                            </div>
+                            <div class="ban-option-icon">📅</div>
+                        </div>
+                        
+                        <div class="ban-option" data-hours="168">
+                            <div>
+                                <div class="ban-option-label">7 días</div>
+                                <div class="ban-option-desc">Baneo de 1 semana</div>
+                            </div>
+                            <div class="ban-option-icon">📆</div>
+                        </div>
+                        
+                        <div class="ban-option" data-hours="720">
+                            <div>
+                                <div class="ban-option-label">30 días</div>
+                                <div class="ban-option-desc">Baneo de 1 mes</div>
+                            </div>
+                            <div class="ban-option-icon">🗓️</div>
+                        </div>
+                        
+                        <div class="ban-option" data-hours="0">
+                            <div>
+                                <div class="ban-option-label">Permanente</div>
+                                <div class="ban-option-desc">Sin fecha de expiración</div>
+                            </div>
+                            <div class="ban-option-icon">🚫</div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button class="btn-cancel" id="cancelBan">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {{#jsonUser}}
         <script id="__initialUser" type="application/json">
             {{{jsonUser}}}

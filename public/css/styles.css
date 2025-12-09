@@ -123,7 +123,9 @@ button {
     color: var(--text);
 }
 .btn.ban {
-    opacity: 0.8;
+    background: var(--accent-2);
+    color: white;
+    opacity: 1;
 }
 body {
     background-repeat: no-repeat;
@@ -1811,6 +1813,120 @@ input[type="file"]::-webkit-file-upload-button:hover {
     border-left: 2px solid var(--border) !important;
 }
 
+/* Modal de duración de baneo */
+#banDurationModal .content {
+    width: min(850px, 95vw) !important;
+    overflow-x: hidden;
+}
+
+#banDurationModal .body {
+    overflow-x: hidden;
+}
+
+#banDurationModal .ban-duration-options {
+    display: grid;
+    gap: 12px;
+    padding: 8px 0;
+}
+
+#banDurationModal .ban-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all var(--speed);
+    position: relative;
+    overflow: hidden;
+}
+
+#banDurationModal .ban-option::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity var(--speed);
+    z-index: -1;
+}
+
+#banDurationModal .ban-option:hover {
+    transform: translateX(4px);
+    border-color: var(--accent-2);
+}
+
+#banDurationModal .ban-option:hover::before {
+    opacity: 0.08;
+}
+
+#banDurationModal .ban-option-label {
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text);
+}
+
+#banDurationModal .ban-option-desc {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+#banDurationModal .ban-option-icon {
+    font-size: 28px;
+    opacity: 1;
+    filter: contrast(1.2) saturate(1.4) brightness(1.1);
+    transition: transform var(--speed);
+}
+
+#banDurationModal .ban-option:hover .ban-option-icon {
+    transform: scale(1.15) rotate(-5deg);
+}
+
+#banDurationModal .ban-user-info {
+    background: var(--glass-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin-bottom: 16px;
+}
+
+#banDurationModal .ban-user-email {
+    font-weight: 600;
+    color: var(--accent-2);
+    font-size: 14px;
+}
+
+#banDurationModal .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+#banDurationModal .btn-cancel {
+    padding: 10px 20px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    cursor: pointer;
+    transition: all var(--speed);
+    font-weight: 500;
+}
+
+#banDurationModal .btn-cancel:hover {
+    background: var(--glass-2);
+    transform: translateY(-1px);
+}
+
 /* Respetar preferencias de movimiento reducido */
 @media (prefers-reduced-motion: reduce) {
     .post {
@@ -1819,6 +1935,15 @@ input[type="file"]::-webkit-file-upload-button:hover {
     }
 
     .post:hover {
+        transform: none;
+    }
+    
+    #banDurationModal .ban-option,
+    #banDurationModal .btn-cancel {
+        transition: none;
+    }
+    
+    #banDurationModal .ban-option:hover {
         transform: none;
     }
 }

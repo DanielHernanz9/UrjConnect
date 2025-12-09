@@ -76,7 +76,8 @@ function withAuth(req, res, next) {
                     try {
                         const jsonUser = user.toJson();
                         const userName = user.name || user.email;
-                        return res.render("banned", { jsonUser, userName });
+                        const bannedUntil = user.banned_finish_date || null;
+                        return res.render("banned", { jsonUser, userName, bannedUntil });
                     } catch (e) {
                         // Si no se puede renderizar por alguna razón, devolver 403
                         return res.status(403).send("Cuenta suspendida");
@@ -104,7 +105,8 @@ function withAdmin(req, res, next) {
                     try {
                         const jsonUser = user.toJson();
                         const userName = user.name || user.email;
-                        return res.render("banned", { jsonUser, userName });
+                        const bannedUntil = user.banned_finish_date || null;
+                        return res.render("banned", { jsonUser, userName, bannedUntil });
                     } catch (e) {
                         return res.status(403).json({ error: { code: "BANNED", message: "Cuenta suspendida" } });
                     }
@@ -133,7 +135,8 @@ router.get("/", (req, res) => {
             const jsonUser = user.toJson();
             const userName = user.name || user.email;
             if (user.isBanned()) {
-                res.render("banned", { jsonUser, userName });
+                const bannedUntil = user.banned_finish_date || null;
+                res.render("banned", { jsonUser, userName, bannedUntil });
             } else {
                 res.render("index", { jsonUser, userName });
             }
@@ -653,7 +656,11 @@ router.post("/api/users/ban", withAdmin, (req, res) => {
         if (!email) return res.status(400).json({ error: { code: "BAD_REQUEST", message: "Falta el email del usuario" } });
         const u = User.getFromFile(email);
         if (typeof u === "number") return res.status(404).json({ error: { code: "NOT_FOUND", message: "Usuario no encontrado" } });
-        u.setBanned(true);
+        
+        // banDuration puede ser null (permanente) o un número en milisegundos
+        const banDuration = req.body.banDuration ? parseInt(req.body.banDuration) : null;
+        u.setBanned(true, banDuration);
+        
         return res.json({ success: true });
     } catch (e) {
         console.error("Error baneando usuario:", e);

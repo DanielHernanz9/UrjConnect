@@ -339,24 +339,9 @@ const forumApp = {
                     } else if (b.classList.contains("report-action-ban")) {
                         const userEmail = b.dataset.userEmail;
                         if (!userEmail) return toast("No se puede banear: falta email del usuario");
-                        if (!confirm(`¿Banear al usuario ${userEmail}? Esta acción marcará su cuenta como suspendida.`)) return;
-                        fetch("/api/users/ban", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ email: userEmail }),
-                        })
-                            .then(async (r) => {
-                                if (!r.ok) {
-                                    const err = await r.json().catch(() => ({}));
-                                    return Promise.reject(err || { message: "Error" });
-                                }
-                                toast("Usuario baneado");
-                                await this.fetchAndRenderReports();
-                            })
-                            .catch((err) => {
-                                console.error("Error baneando usuario desde modal:", err);
-                                toast(err && err.error && err.error.message ? err.error.message : "Error al banear usuario");
-                            });
+                        
+                        // Mostrar modal personalizado para seleccionar duración
+                        this.showBanDurationModal(userEmail);
                     } else if (b.classList.contains("report-action-delete")) {
                         const messageId = b.dataset.messageId;
                         if (!messageId) return toast("ID de mensaje no disponible");
@@ -1607,4 +1592,96 @@ window.addEventListener("DOMContentLoaded", () => {
             forumApp.applyHashContext();
         }
     }, 0);
+    
+    // Configurar modal de duración de baneo
+    const banDurationModal = document.getElementById("banDurationModal");
+    const closeBanModalBtn = document.getElementById("closeBanModal");
+    const cancelBanBtn = document.getElementById("cancelBan");
+    const banDurationOptions = document.getElementById("banDurationOptions");
+    
+    if (closeBanModalBtn) {
+        closeBanModalBtn.addEventListener("click", () => {
+            if (banDurationModal) banDurationModal.classList.remove("show");
+        });
+    }
+    
+    if (cancelBanBtn) {
+        cancelBanBtn.addEventListener("click", () => {
+            if (banDurationModal) banDurationModal.classList.remove("show");
+        });
+    }
+    
+    // Cerrar modal al hacer clic fuera del contenido
+    if (banDurationModal) {
+        banDurationModal.addEventListener("click", (e) => {
+            if (e.target === banDurationModal) {
+                banDurationModal.classList.remove("show");
+            }
+        });
+    }
+    
+    // Método para mostrar el modal de duración de baneo
+    if (typeof forumApp !== "undefined") {
+        forumApp.showBanDurationModal = function(userEmail) {
+            const modal = document.getElementById("banDurationModal");
+            const userEmailEl = document.getElementById("banUserEmail");
+            const optionsContainer = document.getElementById("banDurationOptions");
+            
+            if (!modal || !userEmailEl || !optionsContainer) return;
+            
+            // Establecer email del usuario
+            userEmailEl.textContent = userEmail;
+            
+            // Limpiar listeners anteriores
+            const newOptionsContainer = optionsContainer.cloneNode(true);
+            optionsContainer.parentNode.replaceChild(newOptionsContainer, optionsContainer);
+            
+            // Añadir listeners a las opciones
+            newOptionsContainer.querySelectorAll(".ban-option").forEach(option => {
+                option.addEventListener("click", async () => {
+                    const hours = parseFloat(option.dataset.hours);
+                    let banDuration = null;
+                    let durationText = "permanentemente";
+                    
+                    if (hours > 0) {
+                        banDuration = hours * 60 * 60 * 1000; // Convertir a milisegundos
+                        if (hours === 1) durationText = "por 1 hora";
+                        else if (hours === 24) durationText = "por 24 horas (1 día)";
+                        else if (hours === 168) durationText = "por 7 días";
+                        else if (hours === 720) durationText = "por 30 días";
+                        else durationText = `por ${hours} horas`;
+                    }
+                    
+                    if (!confirm(`¿Banear a ${userEmail} ${durationText}?`)) return;
+                    
+                    // Cerrar modal
+                    modal.classList.remove("show");
+                    
+                    // Realizar el baneo
+                    try {
+                        const response = await fetch("/api/users/ban", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ email: userEmail, banDuration: banDuration }),
+                        });
+                        
+                        if (!response.ok) {
+                            const err = await response.json().catch(() => ({}));
+                            throw err || { message: "Error" };
+                        }
+                        
+                        toast("Usuario baneado correctamente");
+                        await this.fetchAndRenderReports();
+                    } catch (err) {
+                        console.error("Error baneando usuario:", err);
+                        toast(err && err.error && err.error.message ? err.error.message : "Error al banear usuario");
+                    }
+                });
+            });
+            
+            // Mostrar modal
+            modal.classList.add("show");
+        };
+    }
 });
+

@@ -1044,3 +1044,24 @@ window.addEventListener("storage", (e) => {
         } catch (err) {}
     }
 });
+
+// Formatear fecha de baneo en la página banned.html
+(function() {
+    const bannedUntilDateEl = document.getElementById('bannedUntilDate');
+    if (bannedUntilDateEl) {
+        const bannedUntilISO = bannedUntilDateEl.dataset.bannedUntil;
+        if (bannedUntilISO) {
+            const date = new Date(bannedUntilISO);
+            const formatted = date.toLocaleString('es-ES', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            bannedUntilDateEl.textContent = formatted;
+        }
+    }
+})();

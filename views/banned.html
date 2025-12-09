@@ -44,6 +44,18 @@
                 <div class="container glass" style="max-width: 1100px; width: min(1100px, 92vw); padding: 36px; border-radius: 12px; text-align: center">
                     <h1 style="font-size: 42px; font-weight: 700; color: red">Cuenta suspendida</h1>
                     <p style="margin-top: 20px; font-size: 18px; line-height: 1.6">Tu cuenta ha sido <span style="color: red">suspendida</span>. Si crees que se trata de un error, por favor contacta con el soporte.</p>
+                    {{#bannedUntil}}
+                    <div id="bannedUntilContainer" style="margin-top: 24px; padding: 16px; background: var(--glass-2); border: 1px solid var(--border); border-radius: var(--radius); display: inline-block;">
+                        <p style="margin: 0; font-size: 15px; color: var(--muted);">Baneo temporal hasta:</p>
+                        <p id="bannedUntilDate" data-banned-until="{{{bannedUntil}}}" style="margin: 8px 0 0 0; font-size: 20px; font-weight: 600; color: var(--accent-2);">Cargando...</p>
+                    </div>
+                    {{/bannedUntil}}
+                    {{^bannedUntil}}
+                    <div style="margin-top: 24px; padding: 16px; background: var(--glass-2); border: 1px solid var(--border); border-radius: var(--radius); display: inline-block;">
+                        <p style="margin: 0; font-size: 15px; color: var(--muted);">Tipo de baneo:</p>
+                        <p style="margin: 8px 0 0 0; font-size: 20px; font-weight: 600; color: var(--accent-2);">🚫 Permanente</p>
+                    </div>
+                    {{/bannedUntil}}
                     <div style="margin-top: 24px; display: flex; justify-content: center; gap: 12px">
                         <button id="bannedLogoutBtn" type="button" class="btn">Cerrar sesión</button>
                     </div>
