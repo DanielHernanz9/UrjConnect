@@ -329,6 +329,16 @@ router.post("/subject/:id/forum/post", withAuth, uploadAttachments.array("attach
         return res.status(400).json({ error: { code: "BAD_REQUEST", message: "Faltan campos" } });
     }
 
+    // Aplicar filtros de la asignatura: si coincide, no crear el post
+    try {
+        if (forum.textMatchesFilters && forum.textMatchesFilters(subject.id, String(title), String(content))) {
+            return res.status(200).json({ filtered: true });
+        }
+    } catch (e) {
+        console.error("Error evaluando filtros en post:", e);
+        // En caso de error evaluando filtros, seguimos creando para no bloquear uso
+    }
+
     const post = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
         subjectId: subject.id,
@@ -358,6 +368,40 @@ router.post("/uploadIcon", withAdmin, uploadAssets.single("icon"), (req, res) =>
     if (!req.file) return res.status(400).json({ error: { code: "NO_FILE", message: "Falta archivo" } });
     const webPath = "/assets/" + req.file.filename;
     return res.json({ path: webPath });
+});
+
+// Filtros por asignatura (solo admin)
+router.get("/api/subjects/:id/filters", withAdmin, (req, res) => {
+    try {
+        const id = req.params.id;
+        const alias = subjects.getAlias ? subjects.getAlias(id) : null;
+        const subject = getSubjectById(alias || id);
+        if (!subject || subject.title === "Asignatura no encontrada") {
+            return res.status(404).json({ error: { code: "NOT_FOUND" } });
+        }
+        const filters = forum.getFilters(subject.id);
+        return res.json({ subjectId: subject.id, filters });
+    } catch (e) {
+        console.error("Error obteniendo filtros:", e);
+        return res.status(500).json({ error: { code: "SERVER", message: "Error recuperando filtros" } });
+    }
+});
+
+router.post("/api/subjects/:id/filters", withAdmin, (req, res) => {
+    try {
+        const id = req.params.id;
+        const alias = subjects.getAlias ? subjects.getAlias(id) : null;
+        const subject = getSubjectById(alias || id);
+        if (!subject || subject.title === "Asignatura no encontrada") {
+            return res.status(404).json({ error: { code: "NOT_FOUND" } });
+        }
+        const list = Array.isArray(req.body?.filters) ? req.body.filters : [];
+        forum.setFilters(subject.id, list);
+        return res.json({ success: true, subjectId: subject.id, filters: forum.getFilters(subject.id) });
+    } catch (e) {
+        console.error("Error guardando filtros:", e);
+        return res.status(500).json({ error: { code: "SERVER", message: "Error guardando filtros" } });
+    }
 });
 
 router.post("/createSubject", withAdmin, (req, res) => {
@@ -449,10 +493,12 @@ router.delete("/api/messages/:id", withAuth, async (req, res) => {
 
         if (!isAdmin && !isOwner) return res.status(403).json({ error: "Forbidden" });
 
+        // Borrado en cascada: deleteMessage ya elimina adjuntos del post y de sus respuestas,
+        // borra el mensaje del JSON y limpia cualquier reporte asociado (post y replies).
         const deleted = forum.deleteMessage(messageId);
         if (!deleted) return res.status(404).json({ error: "Not found" });
 
-        res.json({ success: true, deleted });
+        res.json({ success: true, deleted, cascade: true });
     } catch (err) {
         console.error("Error deleting message:", err);
         res.status(500).json({ error: "Server error" });
@@ -627,6 +673,17 @@ router.post("/api/messages/:messageId/reply", withAuth, uploadAttachments.array(
         return res.status(404).json({ error: { code: "NOT_FOUND", message: "Mensaje no encontrado" } });
     }
 
+    // Aplicar filtros de la asignatura al contenido de la respuesta
+    try {
+        const subjId = found.post.subjectId;
+        if (forum.textMatchesFilters && forum.textMatchesFilters(subjId, String(content))) {
+            return res.status(200).json({ filtered: true });
+        }
+    } catch (e) {
+        console.error("Error evaluando filtros en reply:", e);
+        // Si falla la evaluación de filtros, continuar para no bloquear
+    }
+
     const reply = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
         content: String(content).trim().slice(0, 5000),
@@ -727,30 +784,7 @@ router.delete("/api/messages/:messageId/reply/:replyId", withAuth, async (req, r
             return res.status(403).json({ error: "No tienes permisos para borrar esta respuesta" });
         }
 
-        // Si no es admin y es una respuesta directa (sin replyToUser), verificar que no haya respuestas a ella
-        if (!isAdmin && !reply.replyToUser) {
-            const replies = found.post.replies || [];
-            // Verificar si hay respuestas que apunten a esta respuesta específica
-            const hasChildReplies = replies.some((r) => {
-                if (r.id === replyId) return false; // No contar la misma respuesta
-                // Verificar por replyToId (nuevo sistema) - debe coincidir con el ID de esta respuesta
-                if (r.replyToId && r.replyToId === replyId) return true;
-                // Para sistema antiguo sin replyToId, solo contar si el nombre coincide Y es una respuesta
-                // que lógicamente debería pertenecer a este hilo (verificar timestamp)
-                if (!r.replyToId && r.replyToUser === reply.userName) {
-                    // Solo contar si la respuesta es posterior a esta
-                    if (new Date(r.timestamp) > new Date(reply.timestamp)) {
-                        return true;
-                    }
-                }
-                return false;
-            });
-
-            if (hasChildReplies) {
-                return res.status(400).json({ error: "No puedes borrar esta respuesta porque hay otras respuestas dirigidas a ella" });
-            }
-        }
-        // Las respuestas con @ (reply.replyToUser existe) siempre se pueden borrar por el propietario
+        // Borrado sin bloqueo por respuestas encadenadas: permitimos borrado de cualquier reply si es owner o admin.
 
         const deleted = forum.deleteReply(messageId, replyId);
         if (!deleted) {

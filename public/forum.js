@@ -123,6 +123,27 @@ const forumApp = {
             });
         }
 
+        // Mostrar botón de filtros solo a administradores (igual que reportes)
+        const filtersBtn = document.getElementById("filtersBtn");
+        if (filtersBtn && this.user && this.user.role === "admin") {
+            filtersBtn.style.display = "inline-flex";
+            filtersBtn.addEventListener("click", async () => {
+                try {
+                    if (!this.subject || !this.subject.id) return toast("Foro no cargado");
+                    const res = await fetch(`/api/subjects/${encodeURIComponent(this.subject.id)}/filters`);
+                    if (!res.ok) throw new Error("Cargar filtros falló");
+                    const data = await res.json();
+                    const list = (data.filters || []).join("\n");
+                    const ta = document.getElementById("filtersTextarea");
+                    if (ta) ta.value = list;
+                    this.openModal("#filtersModal");
+                } catch (e) {
+                    console.error("Error cargando filtros", e);
+                    toast("No se pudieron cargar los filtros");
+                }
+            });
+        }
+
         // Elementos del modal de respuesta
         this.el.replyModal = $("#replyModal");
         this.el.replyForm = $("#replyForm");
@@ -1067,6 +1088,33 @@ const forumApp = {
             document.documentElement.setAttribute("data-theme", next);
         });
 
+        // Guardar filtros
+        const filtersForm = document.getElementById("filtersForm");
+        const filtersTextarea = document.getElementById("filtersTextarea");
+        if (filtersForm && this.user && this.user.role === "admin") {
+            filtersForm.addEventListener("submit", async (ev) => {
+                ev.preventDefault();
+                try {
+                    if (!this.subject || !this.subject.id) return toast("Foro no cargado");
+                    const raw = (filtersTextarea?.value || "")
+                        .split(/\r?\n/)
+                        .map((s) => s.trim())
+                        .filter(Boolean);
+                    const res = await fetch(`/api/subjects/${encodeURIComponent(this.subject.id)}/filters`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ filters: raw }),
+                    });
+                    if (!res.ok) throw new Error("Guardar filtros falló");
+                    toast("Filtros guardados");
+                    this.closeModal("#filtersModal");
+                } catch (e) {
+                    console.error("Error guardando filtros", e);
+                    toast("Error guardando filtros");
+                }
+            });
+        }
+
         // Form submit: publicar mensaje
         this.el.newMessageForm?.addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -1099,6 +1147,16 @@ const forumApp = {
                 });
                 if (!res.ok) throw new Error("Error publicando");
                 const created = await res.json();
+
+                // Si el servidor ha eliminado automáticamente por filtros, informar al usuario y no refrescar como 'publicado'
+                if (created && created.filtered) {
+                    // Mensaje claro para el usuario
+                    toast("Tu mensaje contiene palabras filtradas y ha sido eliminado automáticamente");
+                    // Opcional: mantener el contenido en el formulario para que pueda editarlo
+                    // No recargamos la lista de posts ni mostramos 'Mensaje publicado'
+                    return;
+                }
+
                 // Recargar lista completa para mantener orden desde server
                 const rPosts = await fetch(`/api/subjects/${this.subject.id}/posts`);
                 const messages = rPosts.ok ? await rPosts.json() : [];
@@ -1381,8 +1439,14 @@ const forumApp = {
                     method: "POST",
                     body: fd,
                 });
-
                 if (!res.ok) throw new Error("Error al enviar respuesta");
+                const created = await res.json();
+
+                if (created && created.filtered) {
+                    toast("Tu respuesta contiene palabras filtradas y no se ha publicado");
+                    // mantener texto para edición
+                    return;
+                }
 
                 // Recargar mensajes para mostrar la nueva respuesta
                 const rPosts = await fetch(`/api/subjects/${this.subject.id}/posts`);
@@ -1490,6 +1554,10 @@ const forumApp = {
     },
 
     openReplyModal(messageId, replyTo, replyToUser, replyToId) {
+        // Al iniciar la acción de comentar, parar y limpiar cualquier animación de contexto activa
+        try {
+            this.clearContextHighlight && this.clearContextHighlight();
+        } catch (e) {}
         this.el.replyMessageId.value = messageId;
         this.el.replyToUser.value = replyToUser || "";
         this.el.replyToId.value = replyToId || "";

@@ -12,9 +12,9 @@
         <main class="app">
             <header class="app-header glass">
                 <div class="brand">
-                    <a href="/" class="brand-link" style="display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: inherit">
+                    <a href="/" class="brand-link">
                         <div class="logo" aria-hidden="true">
-                            <img src="/assets/logo.png" alt="Logo URJConnect" style="width: 100%; height: 100%; object-fit: contain" />
+                            <img src="/assets/logo.png" alt="Logo URJConnect" />
                         </div>
                         <div class="brand-wordmark" aria-label="URJConnect">URJConnect</div>
                     </a>
@@ -23,6 +23,7 @@
                 <div class="toolbar">
                     <button class="icon-btn" id="themeToggle" title="Cambiar tema">🌓 Tema</button>
                     <button class="icon-btn" id="reportsBtn" title="Mensajes reportados" style="display: none">🚩 Reportes</button>
+                    <button class="icon-btn" id="filtersBtn" title="Gestionar filtros" style="display: none">🛡️ Filtros</button>
                     <div class="divider"></div>
 
                     <div class="profile">
@@ -42,25 +43,21 @@
 
             <section class="container">
                 <!-- Encabezado del foro -->
-                <div class="glass" style="padding: 18px; border-radius: 12px; margin-bottom: 20px">
-                    <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 12px">
+                <div class="glass forum-header">
+                    <div class="head-row">
                         {{#subject.icon}}
-                        <div
-                            style="width: 54px; height: 54px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; overflow: hidden; background: {{subject.color}}; box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.35), 0 10px 24px rgba(0, 0, 0, 0.25)">
-                            <img src="{{subject.icon}}" alt="Icono {{subject.name}}" style="width: 80%; height: 80%; object-fit: contain" />
+                        <div class="subject-ico" style="background: {{subject.color}}">
+                            <img src="{{subject.icon}}" alt="Icono {{subject.name}}" />
                         </div>
                         {{/subject.icon}} {{^subject.icon}}
-                        <div
-                            style="width: 54px; height: 54px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; overflow: hidden; background: {{subject.color}}; box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.35), 0 10px 24px rgba(0, 0, 0, 0.25); color: white; font-weight: 900; font-size: 20px">
-                            {{subjectInitial}}
-                        </div>
+                        <div class="subject-ico initial" style="background: {{subject.color}}">{{subjectInitial}}</div>
                         {{/subject.icon}}
                         <div style="flex: 1">
-                            <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: var(--primary)">Foro – {{subject.name}}</h1>
-                            <p style="margin: 6px 0 0; color: var(--muted); font-size: 14px">{{subject.desc}}</p>
+                            <h1 class="forum-title">Foro – {{subject.name}}</h1>
+                            <p class="forum-subtitle">{{subject.desc}}</p>
                         </div>
                     </div>
-                    <div class="forum-actions" style="display: flex; gap: 8px">
+                    <div class="forum-actions">
                         <button class="link forum-btn" id="backBtn" type="button" aria-label="Volver al inicio" onclick="window.location.href='/'">Volver al inicio</button>
                         <button class="link forum-btn" type="button" aria-label="Ver detalles de la asignatura" onclick="window.location.href='/subject/{{subject.id}}/details'">Ver detalles</button>
 
@@ -71,11 +68,11 @@
                 </div>
 
                 <!-- Mensajes del foro -->
-                <div class="mensage-forum" style="padding: 18px; border-radius: 12px; margin-bottom: 20px">
-                    <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 700">Mensajes</h2>
+                <div class="mensage-forum card">
+                    <h2 class="section-title">Mensajes</h2>
                     <div class="posts" id="postsContainer">
                         <!-- Aquí se cargarán los mensajes dinámicamente -->
-                        <div class="hint" style="padding: 24px; text-align: center">
+                        <div class="hint h-center">
                             <p style="margin: 0">Aún no hay mensajes en este foro.</p>
                             <p style="margin: 8px 0 0; font-size: 13px">¡Sé el primero en publicar algo!</p>
                         </div>
@@ -83,12 +80,12 @@
                 </div>
 
                 <!-- Formulario para nuevo mensaje -->
-                <div class="glass" style="padding: 18px; border-radius: 12px">
-                    <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 700">Publicar mensaje</h2>
+                <div class="glass forum-header" style="margin-bottom: 0">
+                    <h2 class="section-title">Publicar mensaje</h2>
                     <form id="newMessageForm">
                         <div class="field">
                             <label for="messageTitle">Título del mensaje</label>
-                            <input id="messageTitle" name="title" type="text" placeholder="Escribe un título para tu mensaje..." required style="width: 100%" />
+                            <input id="messageTitle" name="title" type="text" placeholder="Escribe un título para tu mensaje..." required />
                         </div>
                         <div class="field" style="margin-top: 12px">
                             <label for="messageContent">Contenido</label>
@@ -99,7 +96,7 @@
                             <input id="messageAttachments" name="attachments" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar" />
                             <small class="hint">Máx. 5 archivos, 5MB cada uno.</small>
                         </div>
-                        <div class="actions" style="justify-content: flex-start; margin-top: 12px">
+                        <div class="actions left">
                             <button class="btn" type="submit">Publicar mensaje</button>
                             <button class="btn secondary" type="reset">Limpiar</button>
                         </div>
@@ -112,15 +109,15 @@
         <div class="modal" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
             <div class="content glass">
                 <div class="body">
-                    <h3 id="profileTitle" style="margin: 0 0 8px 0">Editar perfil</h3>
+                    <h3 id="profileTitle">Editar perfil</h3>
                     <small class="hint">Actualiza tu nombre, color de avatar y una breve bio.</small>
-                    <div class="field" style="margin-top: 12px">
+                    <div class="field">
                         <label for="p_name">Nombre</label>
-                        <input id="p_name" type="text" placeholder="Tu nombre" style="width: 100%; max-width: 420px" />
+                        <input id="p_name" type="text" placeholder="Tu nombre" />
                     </div>
-                    <div class="field" style="margin-top: 10px">
+                    <div class="field">
                         <label for="p_color">Color del avatar</label>
-                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px">
+                        <div class="profile-inline">
                             <div class="swatches" id="p_swatches" aria-hidden="true"></div>
                             <input id="p_color" type="color" value="#6366f1" aria-label="Color personalizado" />
                         </div>
@@ -134,9 +131,9 @@
                         <small class="hint" style="margin: 0 0 8px 0">Configuración de la cuenta</small>
                     </div>
                     <div>
-                        <button class="btn" id="changePasswordbtn" style="margin-top: 10px" onclick="window.location.href='/editPassword'">Cambiar contraseña</button>
+                        <button class="btn" id="changePasswordbtn" onclick="window.location.href='/editPassword'">Cambiar contraseña</button>
                     </div>
-                    <div class="actions" style="justify-content: flex-end">
+                    <div class="actions">
                         <button class="btn" id="saveProfile">Guardar cambios</button>
                         <button class="btn secondary" data-close="#profileModal">Cancelar</button>
                     </div>
@@ -148,22 +145,22 @@
         <div class="modal" id="replyModal" role="dialog" aria-modal="true" aria-labelledby="replyTitle">
             <div class="content glass">
                 <div class="body">
-                    <h3 id="replyTitle" style="margin: 0 0 8px 0">Responder mensaje</h3>
+                    <h3 id="replyTitle">Responder mensaje</h3>
                     <small class="hint" id="replyToHint">Respondiendo a...</small>
                     <form id="replyForm">
                         <input type="hidden" id="replyMessageId" name="messageId" />
                         <input type="hidden" id="replyToUser" name="replyToUser" />
                         <input type="hidden" id="replyToId" name="replyToId" />
-                        <div class="field" style="margin-top: 12px">
+                        <div class="field">
                             <label for="replyContent">Tu respuesta</label>
                             <textarea id="replyContent" name="content" rows="4" placeholder="Escribe tu respuesta..." required></textarea>
                         </div>
-                        <div class="field" style="margin-top: 12px">
+                        <div class="field">
                             <label for="replyAttachments">Adjuntos</label>
                             <input id="replyAttachments" name="attachments" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar" />
                             <small class="hint">Máx. 5 archivos, 5MB cada uno.</small>
                         </div>
-                        <div class="actions" style="justify-content: flex-end">
+                        <div class="actions">
                             <button class="btn" type="submit">Enviar respuesta</button>
                             <button class="btn secondary" type="button" data-close="#replyModal">Cancelar</button>
                         </div>
@@ -173,18 +170,38 @@
         </div>
 
         <!-- Modal de reportes (admins) -->
-        <div class="modal" id="reportsModal" role="dialog" aria-modal="true" aria-labelledby="reportsTitle" style="display: none">
-            <div class="content glass" style="width: min(820px, 96vw)">
+        <div class="modal" id="reportsModal" role="dialog" aria-modal="true" aria-labelledby="reportsTitle">
+            <div class="content glass">
                 <div class="body">
-                    <h3 id="reportsTitle" style="margin: 0 0 8px 0">Mensajes reportados</h3>
-                    <div style="margin-top: 12px">
-                        <div id="reportsList" style="display: grid; gap: 10px; max-height: 60vh; overflow: auto">
+                    <h3 id="reportsTitle">Mensajes reportados</h3>
+                    <div>
+                        <div id="reportsList">
                             <!-- Contenido cargado dinámicamente -->
                         </div>
                     </div>
-                    <div class="actions" style="justify-content: flex-end; margin-top: 12px">
+                    <div class="actions">
                         <button class="btn secondary" data-close="#reportsModal">Cerrar</button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de filtros (admins) -->
+        <div class="modal" id="filtersModal" role="dialog" aria-modal="true" aria-labelledby="filtersTitle">
+            <div class="content glass">
+                <div class="body">
+                    <h3 id="filtersTitle">Filtros de la asignatura</h3>
+                    <small class="hint">Escribe una palabra o expresión por línea. Coincidencia insensible a mayúsculas/minúsculas.</small>
+                    <form id="filtersForm">
+                        <div class="field" style="margin-top: 12px">
+                            <label for="filtersTextarea">Lista de filtros</label>
+                            <textarea id="filtersTextarea" rows="10" placeholder="ej. spam\nventa ilegal\nlink sospechoso"></textarea>
+                        </div>
+                        <div class="actions">
+                            <button class="btn" type="submit">Guardar</button>
+                            <button class="btn secondary" type="button" data-close="#filtersModal">Cerrar</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -192,15 +209,12 @@
         <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
         <!-- Modal de adjuntos (vista previa y descarga) -->
-        <div class="modal" id="attachmentModal" role="dialog" aria-modal="true" aria-labelledby="attachmentTitle" style="display: none">
+        <div class="modal" id="attachmentModal" role="dialog" aria-modal="true" aria-labelledby="attachmentTitle">
             <div class="content glass">
                 <div class="body">
-                    <h3 id="attachmentTitle" style="margin: 0 0 8px 0">Adjunto</h3>
-                    <div
-                        id="attachmentPreview"
-                        class="attachment-preview"
-                        style="display: grid; place-items: center; max-height: 60vh; overflow: auto; border: 1px solid var(--border); border-radius: 12px; padding: 10px; background: var(--bg-2)"></div>
-                    <div class="actions" style="justify-content: space-between; margin-top: 12px">
+                    <h3 id="attachmentTitle">Adjunto</h3>
+                    <div id="attachmentPreview" class="attachment-preview"></div>
+                    <div class="actions">
                         <a id="attachmentDownload" class="btn" href="#" download>Descargar</a>
                         <button class="btn secondary" data-close="#attachmentModal">Cerrar</button>
                     </div>

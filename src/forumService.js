@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 
 const FORUM_DIR = "data/forums";
+const FILTERS_FILE = path.join("data", "filters.json");
 
 function ensureDir() {
     if (!fs.existsSync(FORUM_DIR)) {
@@ -420,4 +421,54 @@ export function markReportResolved(reportId, resolverEmail) {
     } catch (e) {
         return null;
     }
+}
+
+// ===== Filtros de contenido (por asignatura) =====
+function ensureFiltersFile() {
+    const dir = path.dirname(FILTERS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    if (!fs.existsSync(FILTERS_FILE)) fs.writeFileSync(FILTERS_FILE, JSON.stringify({}, null, 2), "utf8");
+}
+
+export function getFilters(subjectId) {
+    ensureFiltersFile();
+    try {
+        const raw = fs.readFileSync(FILTERS_FILE, "utf8");
+        const map = JSON.parse(raw) || {};
+        const arr = map[subjectId] || map[String(subjectId)] || [];
+        return Array.isArray(arr) ? arr : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+export function setFilters(subjectId, filters) {
+    ensureFiltersFile();
+    const safeList = (Array.isArray(filters) ? filters : [])
+        .map((w) => String(w || "").trim())
+        .filter((w) => w.length > 0)
+        .slice(0, 200);
+    try {
+        const raw = fs.readFileSync(FILTERS_FILE, "utf8");
+        const map = JSON.parse(raw) || {};
+        map[String(subjectId)] = safeList;
+        fs.writeFileSync(FILTERS_FILE, JSON.stringify(map, null, 2), "utf8");
+        return safeList;
+    } catch (e) {
+        const map = {};
+        map[String(subjectId)] = safeList;
+        fs.writeFileSync(FILTERS_FILE, JSON.stringify(map, null, 2), "utf8");
+        return safeList;
+    }
+}
+
+export function textMatchesFilters(subjectId, ...texts) {
+    const filters = getFilters(subjectId).map((w) => w.toLowerCase());
+    if (!filters.length) return false;
+    const combined = texts
+        .filter(Boolean)
+        .map((t) => String(t).toLowerCase())
+        .join(" \n ");
+    // Coincidencia simple por substring; si se quiere exactitud de palabra, se puede mejorar con regex de límites
+    return filters.some((w) => combined.includes(w));
 }
