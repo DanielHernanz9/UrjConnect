@@ -451,7 +451,22 @@ router.post("/subject/:id/modify", withAdmin, (req, res) => {
 });
 
 router.post("/subject/:id/delete", withAdmin, (req, res) => {
-    subjects.deleteSubject(req.params.id);
+    // Resolver alias antes de borrar
+    const id = req.params.id;
+    const alias = subjects.getAlias ? subjects.getAlias(id) : null;
+    const subjectId = alias || id;
+    try {
+        // Borrar asignatura del catálogo
+        subjects.deleteSubject(subjectId);
+    } catch (e) {
+        console.error("Error borrando asignatura:", e);
+    }
+    try {
+        // Borrar foro y su JSON + adjuntos + reportes del subject
+        forum.deleteForum(subjectId);
+    } catch (e) {
+        console.error("Error borrando foro de asignatura:", e);
+    }
     return res.redirect("/");
 });
 

@@ -41,6 +41,62 @@ export function clearPosts(subjectId) {
     fs.writeFileSync(file, JSON.stringify([], null, 2));
 }
 
+/**
+ * Eliminar completamente el foro de una asignatura:
+ * - Borra adjuntos de posts y respuestas
+ * - Elimina el fichero JSON de `data/forums/<subject>.json`
+ * - Limpia reportes asociados (por subjectId)
+ */
+export function deleteForum(subjectId) {
+    const file = fileFor(subjectId);
+    try {
+        if (fs.existsSync(file)) {
+            // Borrar adjuntos de todos los posts y respuestas
+            try {
+                const raw = fs.readFileSync(file, "utf-8");
+                const posts = JSON.parse(raw);
+                if (Array.isArray(posts)) {
+                    posts.forEach((p) => {
+                        const postAtts = Array.isArray(p?.attachments) ? p.attachments : [];
+                        const replyAtts = (p?.replies || []).flatMap((r) => (Array.isArray(r?.attachments) ? r.attachments : []));
+                        const all = postAtts.concat(replyAtts);
+                        all.forEach((a) => {
+                            if (!a || !a.url) return;
+                            const rel = String(a.url).replace(/^\//, "");
+                            const physical = path.join("public", rel);
+                            try {
+                                if (fs.existsSync(physical)) fs.unlinkSync(physical);
+                            } catch (e) {
+                                // ignorar fallos individuales
+                            }
+                        });
+                    });
+                }
+            } catch (e) {
+                // ignorar errores leyendo o parseando
+            }
+            // Eliminar fichero del foro
+            try {
+                fs.unlinkSync(file);
+            } catch (e) {
+                // Si no se pudo borrar, al menos vaciar
+                try {
+                    fs.writeFileSync(file, JSON.stringify([], null, 2), "utf8");
+                } catch {}
+            }
+        }
+    } catch (e) {}
+    // Limpiar reportes por subjectId (si está presente en los reportes)
+    try {
+        ensureReportsFile();
+        const all = getReports();
+        const next = all.filter((r) => String(r?.subjectId || "") !== String(subjectId));
+        if (next.length !== all.length) {
+            fs.writeFileSync(REPORTS_FILE, JSON.stringify(next, null, 2), "utf8");
+        }
+    } catch (e) {}
+}
+
 export function updatePostsForUser(email, updates = {}, oldName = null) {
     ensureDir();
     let total = 0;
