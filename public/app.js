@@ -32,6 +32,23 @@ const initialsOf = (name = "?") =>
         .join("") || "UX";
 const hash = (s) => btoa(unescape(encodeURIComponent(s)));
 
+// Verificar si un usuario es profesor de una asignatura o admin global
+const isSubjectAdmin = (user, subject) => {
+    if (!user) return false;
+    // Admin global siempre tiene permisos
+    if (user.role === "admin") return true;
+    // Verificar si es profesor
+    if (!subject) return false;
+    const professors = subject.professors || subject.professor;
+    if (Array.isArray(professors)) {
+        return professors.includes(user.email);
+    }
+    if (typeof professors === "string") {
+        return professors === user.email;
+    }
+    return false;
+};
+
 // 🎨 Presets de color para el avatar
 const PRESET_COLORS = ["#6366f1", "#06b6d4", "#22c55e", "#f59e0b", "#ec4899", "#8b5cf6", "#0ea5e9", "#14b8a6"];
 

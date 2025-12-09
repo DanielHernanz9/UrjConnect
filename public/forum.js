@@ -50,6 +50,23 @@ const initialsOf = (name = "?") =>
         .map((s) => s[0]?.toUpperCase() || "")
         .join("") || "UX";
 
+// Verificar si un usuario es profesor de una asignatura o admin global
+const isSubjectAdmin = (user, subject) => {
+    if (!user) return false;
+    // Admin global siempre tiene permisos
+    if (user.role === "admin") return true;
+    // Verificar si es profesor
+    if (!subject) return false;
+    const professors = subject.professors || subject.professor;
+    if (Array.isArray(professors)) {
+        return professors.includes(user.email);
+    }
+    if (typeof professors === "string") {
+        return professors === user.email;
+    }
+    return false;
+};
+
 /** =========================
  *  Forum App
  *  ========================= */
@@ -108,42 +125,6 @@ const forumApp = {
         this.el.avatar.style.background = store.getColor();
         this.el.avatarInitials.textContent = initialsOf(this.user.name || this.user.email);
 
-        if (this.el.deleteForumForm && this.user.role === "admin") {
-            this.el.deleteForumForm.style.display = "block";
-        }
-
-        // Mostrar botón de reportes solo a administradores
-        const reportsBtn = document.getElementById("reportsBtn");
-        if (reportsBtn && this.user && this.user.role === "admin") {
-            reportsBtn.style.display = "inline-flex";
-            reportsBtn.addEventListener("click", async () => {
-                // abrir modal y cargar reportes
-                this.openModal("#reportsModal");
-                await this.fetchAndRenderReports();
-            });
-        }
-
-        // Mostrar botón de filtros solo a administradores (igual que reportes)
-        const filtersBtn = document.getElementById("filtersBtn");
-        if (filtersBtn && this.user && this.user.role === "admin") {
-            filtersBtn.style.display = "inline-flex";
-            filtersBtn.addEventListener("click", async () => {
-                try {
-                    if (!this.subject || !this.subject.id) return toast("Foro no cargado");
-                    const res = await fetch(`/api/subjects/${encodeURIComponent(this.subject.id)}/filters`);
-                    if (!res.ok) throw new Error("Cargar filtros falló");
-                    const data = await res.json();
-                    const list = (data.filters || []).join("\n");
-                    const ta = document.getElementById("filtersTextarea");
-                    if (ta) ta.value = list;
-                    this.openModal("#filtersModal");
-                } catch (e) {
-                    console.error("Error cargando filtros", e);
-                    toast("No se pudieron cargar los filtros");
-                }
-            });
-        }
-
         // Elementos del modal de respuesta
         this.el.replyModal = $("#replyModal");
         this.el.replyForm = $("#replyForm");
@@ -171,27 +152,48 @@ const forumApp = {
 
             let reports = [];
             let usedSubjectEndpoint = false;
+            const debugPayload = { bySubject: null, allReports: null };
             // Preferir endpoint filtrado por asignatura si existe
             try {
-                const resBySubject = await fetch(`/api/subjects/${encodeURIComponent(currentSubjectId)}/reports`);
+                const urlBySubject = `/api/subjects/${encodeURIComponent(currentSubjectId)}/reports`;
+                const resBySubject = await fetch(urlBySubject);
                 if (resBySubject.ok) {
-                    reports = await resBySubject.json();
+                    const json = await resBySubject.json();
+                    debugPayload.bySubject = json;
+                    reports = json;
                     usedSubjectEndpoint = true;
+                } else {
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.error && console.error('fetchAndRenderReports: error fetching subject reports', e);
+            }
             if (!usedSubjectEndpoint) {
-                const res = await fetch("/api/reports");
-                if (!res.ok) throw new Error("No se pudieron cargar los reportes");
-                const allReports = await res.json();
-                reports = (allReports || []).filter((r) => {
-                    const sid = r.subjectId || (r.message && r.message.subjectId);
-                    return String(sid) === String(currentSubjectId);
-                });
+                try {
+                    const urlAll = '/api/reports';
+                    const res = await fetch(urlAll);
+                    if (!res.ok) throw new Error('No se pudieron cargar los reportes');
+                    const allReports = await res.json();
+                    debugPayload.allReports = allReports;
+                    reports = (allReports || []).filter((r) => {
+                        const sid = r.subjectId || (r.message && r.message.subjectId);
+                        return String(sid) === String(currentSubjectId);
+                    });
+                } catch (e) {
+                    console.error && console.error('fetchAndRenderReports: error fetching all reports', e);
+                    throw e;
+                }
             }
             const list = $("#reportsList");
             if (!list) return;
             list.innerHTML = "";
+            const debugMode = location.search && location.search.indexOf('debugReports=1') !== -1;
             if (!reports || reports.length === 0) {
+                if (debugMode) {
+                    list.innerHTML = `<div style="padding:12px"><strong>Debug payload (subject endpoint):</strong><pre style="white-space:pre-wrap;max-height:360px;overflow:auto">${this.escapeHtml(
+                        JSON.stringify(debugPayload, null, 2)
+                    )}</pre></div>`;
+                    return;
+                }
                 list.innerHTML = `
                     <div class="hint" style="padding: 24px; text-align: center">
                         <p style="margin: 0; font-weight: 700">No hay reportes de este foro</p>
@@ -263,7 +265,7 @@ const forumApp = {
                                             : `<button class="btn secondary report-action-ignore" data-message-id="${msg.id}" title="Marcar como revisado">Dejar</button>`
                                     }
                                     ${
-                                        this.user && this.user.role === "admin"
+                                        this.user && isSubjectAdmin(this.user, this.subject)
                                             ? `<button class="btn ban report-action-ban" data-message-id="${msg.id}" data-user-email="${this.escapeHtml(msg.userEmail || "")}" title="Banear usuario">Banear</button>`
                                             : ``
                                     }
@@ -501,6 +503,12 @@ const forumApp = {
 
             this.subject = await response.json();
 
+            // Mostrar botón de editar asignatura si el usuario es profesor o admin
+            const editSubjectBtn = document.getElementById("editSubjectBtn");
+            if (editSubjectBtn && isSubjectAdmin(this.user, this.subject)) {
+                editSubjectBtn.style.display = "inline-block";
+            }
+
             // Cargar mensajes del foro
             const rPosts = await fetch(`/api/subjects/${this.subject.id}/posts`);
             const messages = rPosts.ok ? await rPosts.json() : [];
@@ -521,9 +529,91 @@ const forumApp = {
             }
 
             this.renderMessages(messages);
+            
+            // Setup de permisos de profesor/admin después de cargar los datos
+            this.setupProfessorPermissions();
         } catch (err) {
             console.error("Error cargando datos del foro:", err);
             toast("Error al cargar el foro");
+        }
+    },
+
+    setupProfessorPermissions() {
+        // Solo ejecutar si el usuario es profesor o admin
+        if (!this.user || !isSubjectAdmin(this.user, this.subject)) {
+            return;
+        }
+
+        // Mostrar botón de eliminar foro
+        if (this.el.deleteForumForm) {
+            this.el.deleteForumForm.style.display = "block";
+        }
+
+        // Mostrar y configurar botón de reportes
+        const reportsBtn = document.getElementById("reportsBtn");
+        if (reportsBtn) {
+            reportsBtn.style.display = "inline-flex";
+            reportsBtn.removeEventListener("click", this.handleReportsClick);
+            reportsBtn.addEventListener("click", async () => {
+                this.openModal("#reportsModal");
+                await this.fetchAndRenderReports();
+            });
+        }
+
+        // Mostrar y configurar botón de filtros
+        const filtersBtn = document.getElementById("filtersBtn");
+        if (filtersBtn) {
+            filtersBtn.style.display = "inline-flex";
+            filtersBtn.removeEventListener("click", this.handleFiltersClick);
+            filtersBtn.addEventListener("click", async () => {
+                try {
+                    if (!this.subject || !this.subject.id) return toast("Foro no cargado");
+                    const res = await fetch(`/api/subjects/${encodeURIComponent(this.subject.id)}/filters`);
+                    if (!res.ok) throw new Error("Cargar filtros falló");
+                    const data = await res.json();
+                    const list = (data.filters || []).join("\n");
+                    const ta = document.getElementById("filtersTextarea");
+                    if (ta) ta.value = list;
+                    this.openModal("#filtersModal");
+                } catch (e) {
+                    console.error("Error cargando filtros", e);
+                    toast("No se pudieron cargar los filtros");
+                }
+            });
+        }
+
+        // Registrar listener del formulario de filtros aquí (se ejecuta después de cargar subject)
+        try {
+            const filtersForm = document.getElementById("filtersForm");
+            const filtersTextarea = document.getElementById("filtersTextarea");
+            if (filtersForm) {
+                // remover posibles listeners previos para evitar duplicados
+                filtersForm.removeEventListener && filtersForm.removeEventListener("submit", this._filtersSubmitHandler);
+                this._filtersSubmitHandler = async (ev) => {
+                    ev.preventDefault();
+                    try {
+                        if (!this.subject || !this.subject.id) return toast("Foro no cargado");
+                        const raw = (filtersTextarea?.value || "")
+                            .split(/\r?\n/)
+                            .map((s) => s.trim())
+                            .filter(Boolean);
+                        const res = await fetch(`/api/subjects/${encodeURIComponent(this.subject.id)}/filters`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ filters: raw }),
+                        });
+                        if (!res.ok) throw new Error("Guardar filtros falló");
+                        toast("Filtros guardados");
+                        this.closeModal("#filtersModal");
+                    } catch (err) {
+                        console.error("Error guardando filtros", err);
+                        toast("Error guardando filtros");
+                    }
+                };
+                filtersForm.addEventListener("submit", this._filtersSubmitHandler);
+            }
+        } catch (e) {
+            // noop
         }
     },
 
@@ -562,7 +652,7 @@ const forumApp = {
                         <div style="font-weight: 700; font-size: 15px">${this.escapeHtml(displayName)}</div>
                         <div style="font-size: 12px; color: var(--muted)">${new Date(msg.timestamp).toLocaleString()}</div>
                     </div>
-                    ${this.user && this.user.role === "admin" ? `<button class="btn-delete-post" data-id="${msg.id}" title="Borrar">Borrar</button>` : ""}
+                    ${this.user && isSubjectAdmin(this.user, this.subject) ? `<button class="btn-delete-post" data-id="${msg.id}" title="Borrar">Borrar</button>` : ""}
                 </div>
                 <div class="post-title" style="font-weight: 700; font-size: 16px; margin-bottom: 8px">${this.escapeHtml(msg.title)}</div>
                 <div class="post-content" style="white-space: pre-wrap; line-height: 1.6">${this.escapeHtml(msg.content)}</div>
@@ -756,7 +846,7 @@ const forumApp = {
         if (!replies || replies.length === 0) return "";
 
         const session = store.getSession();
-        const isAdmin = this.user && this.user.role === "admin";
+        const isAdmin = this.user && isSubjectAdmin(this.user, this.subject);
 
         // Separar respuestas directas de respuestas a respuestas
         const directReplies = [];
@@ -1076,7 +1166,7 @@ const forumApp = {
         // Guardar filtros
         const filtersForm = document.getElementById("filtersForm");
         const filtersTextarea = document.getElementById("filtersTextarea");
-        if (filtersForm && this.user && this.user.role === "admin") {
+        if (filtersForm && this.user && isSubjectAdmin(this.user, this.subject)) {
             filtersForm.addEventListener("submit", async (ev) => {
                 ev.preventDefault();
                 try {

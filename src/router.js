@@ -127,6 +127,76 @@ function withAdmin(req, res, next) {
     return res.redirect("/");
 }
 
+// Middleware para rutas que requieren admin global o permisos de profesor en una asignatura
+function withSubjectAdmin(req, res, next) {
+    if (req.cookies && req.cookies.session_id) {
+        const user = auth.authenticate(req.cookies.session_id);
+        if (user) {
+            // Rechazar usuarios baneados
+            if (user.isBanned && user.isBanned()) {
+                const accepts = String(req.headers.accept || "");
+                if (accepts.indexOf("text/html") !== -1) {
+                    try {
+                        const jsonUser = user.toJson();
+                        const userName = user.name || user.email;
+                        const bannedUntil = user.banned_finish_date || null;
+                        return res.render("banned", { jsonUser, userName, bannedUntil });
+                    } catch (e) {
+                        return res.status(403).json({ error: { code: "BANNED", message: "Cuenta suspendida" } });
+                    }
+                }
+                return res.status(403).json({ error: { code: "BANNED", message: "Cuenta suspendida" } });
+            }
+
+            // Admins globales tienen siempre acceso
+            if (user.isRole("admin")) {
+                req.user = user;
+                return next();
+            }
+
+            // Para no-admins, verificar si es profesor de la asignatura
+            const subjectId = req.params.id;
+            if (!subjectId) {
+                return res.status(403).json({
+                    error: { code: "FORBIDDEN", message: "No tienes permisos para realizar esta acción." },
+                });
+            }
+
+            const subject = subjects.getSubject(subjectId);
+            if (!subject) {
+                return res.status(404).json({
+                    error: { code: "NOT_FOUND", message: "Asignatura no encontrada." },
+                });
+            }
+
+            // Verificar si el usuario es profesor de esta asignatura
+            if (!subjects.isUserProfessor(subject, user.email)) {
+                return res.status(403).json({
+                    error: { code: "FORBIDDEN", message: "No tienes permisos para realizar esta acción." },
+                });
+            }
+
+            req.user = user;
+            return next();
+        }
+        res.clearCookie("session_id", COOKIEOPTIONSDELETE);
+    }
+    return res.redirect("/");
+}
+
+// Función auxiliar para verificar si un usuario es administrador de una asignatura
+// (considerer tanto admin global como profesor de la asignatura)
+function isSubjectAdmin(user, subjectId) {
+    // Los admins globales siempre tienen permisos
+    if (!user || user.isRole("admin")) return true;
+    
+    // Para no-admins, verificar si es profesor de la asignatura
+    const subject = subjects.getSubject(subjectId);
+    if (!subject) return false;
+    
+    return subjects.isUserProfessor(subject, user.email);
+}
+
 router.get("/", (req, res) => {
     if (req.cookies && req.cookies.session_id) {
         const user = auth.authenticate(req.cookies.session_id);
@@ -276,6 +346,56 @@ router.get("/api/subjects/:id/posts", withAuth, (req, res) => {
     res.json(posts);
 });
 
+// API: obtener reportes de una asignatura (admins globales o profesores de la asignatura)
+router.get("/api/subjects/:id/reports", withSubjectAdmin, (req, res) => {
+    try {
+        const subjectId = req.params.id;
+        const reports = forum.getReports() || [];
+        const activeReports = reports.filter((r) => !r.resolved).filter((r) => {
+            const sid = r.subjectId || (r.message && r.message.subjectId);
+            return String(sid) === String(subjectId);
+        });
+
+        const enriched = activeReports
+            .map((r) => {
+                const found = forum.findMessageById(r.messageId);
+                const msg =
+                    found && found.post
+                        ? {
+                              id: found.post.id,
+                              title: found.post.title,
+                              content: found.post.content,
+                              timestamp: found.post.timestamp,
+                              subjectId: found.post.subjectId,
+                              userName: found.post.userName || null,
+                              userEmail: found.post.userEmail || null,
+                          }
+                        : null;
+                let reply = null;
+                if (msg && r.replyId) {
+                    const rep = forum.findReply(r.messageId, r.replyId);
+                    if (rep) {
+                        reply = {
+                            id: rep.id,
+                            content: rep.content,
+                            timestamp: rep.timestamp,
+                            userName: rep.userName || null,
+                            userEmail: rep.userEmail || null,
+                            replyToUser: rep.replyToUser || null,
+                        };
+                    }
+                }
+                return Object.assign({}, r, { message: msg, reply });
+            })
+            .filter((r) => r.message);
+
+        return res.json(enriched);
+    } catch (e) {
+        console.error("Error getting subject reports:", e);
+        return res.status(500).json({ error: { code: "SERVER", message: "Error recuperando reportes" } });
+    }
+});
+
 //renderizar pagina de detalles de la asignatura
 router.get("/subject/:id/details", withAuth, (req, res) => {
     const id = req.params.id;
@@ -373,8 +493,8 @@ router.post("/uploadIcon", withAdmin, uploadAssets.single("icon"), (req, res) =>
     return res.json({ path: webPath });
 });
 
-// Filtros por asignatura (solo admin)
-router.get("/api/subjects/:id/filters", withAdmin, (req, res) => {
+// Filtros por asignatura (admin global o profesor de la asignatura)
+router.get("/api/subjects/:id/filters", withSubjectAdmin, (req, res) => {
     try {
         const id = req.params.id;
         const alias = subjects.getAlias ? subjects.getAlias(id) : null;
@@ -390,7 +510,7 @@ router.get("/api/subjects/:id/filters", withAdmin, (req, res) => {
     }
 });
 
-router.post("/api/subjects/:id/filters", withAdmin, (req, res) => {
+router.post("/api/subjects/:id/filters", withSubjectAdmin, (req, res) => {
     try {
         const id = req.params.id;
         const alias = subjects.getAlias ? subjects.getAlias(id) : null;
@@ -440,7 +560,7 @@ router.post("/createSubject", withAdmin, (req, res) => {
     }
 });
 
-router.post("/subject/:id/modify", withAdmin, (req, res) => {
+router.post("/subject/:id/modify", withSubjectAdmin, (req, res) => {
     if (!req.body.subject) {
         return res.json({ code: 20 });
     }
@@ -453,7 +573,7 @@ router.post("/subject/:id/modify", withAdmin, (req, res) => {
     return res.json({ code: result.code, id: result.id, newCode: result.newCode });
 });
 
-router.post("/subject/:id/delete", withAdmin, (req, res) => {
+router.post("/subject/:id/delete", withSubjectAdmin, (req, res) => {
     // Resolver alias antes de borrar
     const id = req.params.id;
     const alias = subjects.getAlias ? subjects.getAlias(id) : null;
@@ -506,7 +626,13 @@ router.delete("/api/messages/:id", withAuth, async (req, res) => {
 
         const post = found.post;
         const user = req.user || null;
-        const isAdmin = user ? user.isAdmin === true || user.role === "admin" : false;
+        
+        // Extraer subjectId del archivo (data/forums/{subjectId}.json)
+        const filePath = found.file;
+        const fileMatch = filePath.match(/forums[\/\\]([^\/\\]+)\.json$/);
+        const subjectId = fileMatch ? fileMatch[1] : null;
+        
+        const isAdmin = subjectId && user ? isSubjectAdmin(user, subjectId) : (user && (user.isAdmin === true || user.role === "admin"));
         const isOwner = user && (post.userName === user.name || post.userEmail === user.email);
 
         if (!isAdmin && !isOwner) return res.status(403).json({ error: "Forbidden" });
@@ -669,11 +795,28 @@ router.post("/api/users/ban", withAdmin, (req, res) => {
 });
 
 // Resolver todos los reportes de un mensaje (marcar como resueltos) - requiere admin
-router.post("/api/reports/resolve-message/:messageId", withAdmin, (req, res) => {
+router.post("/api/reports/resolve-message/:messageId", withAuth, (req, res) => {
     const messageId = req.params.messageId;
+    const user = req.user;
+    
     try {
+        // Verificar si el usuario es admin o profesor de la asignatura
+        const found = forum.findMessageById(messageId);
+        if (!found || !found.post) {
+            return res.status(404).json({ error: { code: "NOT_FOUND", message: "Mensaje no encontrado" } });
+        }
+        
+        // Extraer subjectId del archivo (data/forums/{subjectId}.json)
+        const filePath = found.file;
+        const fileMatch = filePath.match(/forums[\/\\]([^\/\\]+)\.json$/);
+        const subjectId = fileMatch ? fileMatch[1] : null;
+        
+        if (!subjectId || !isSubjectAdmin(user, subjectId)) {
+            return res.status(403).json({ error: { code: "FORBIDDEN", message: "No tienes permisos para resolver reportes de esta asignatura" } });
+        }
+        
         if (!forum.markReportsResolvedForMessage) return res.status(501).json({ error: { code: "NOT_IMPLEMENTED" } });
-        const result = forum.markReportsResolvedForMessage(messageId, req.user.email || null);
+        const result = forum.markReportsResolvedForMessage(messageId, user.email || null);
         return res.json({ success: true, updated: result.updated });
     } catch (e) {
         console.error("Error resolving reports for message:", e);
@@ -774,8 +917,25 @@ router.post("/api/messages/:messageId/reply/:replyId/report", withAuth, (req, re
 // Resolver todos los reportes de una respuesta
 router.post("/api/reports/resolve-reply/:messageId/:replyId", withAuth, (req, res) => {
     const { messageId, replyId } = req.params;
+    const user = req.user;
+    
     try {
-        const result = forum.markReportsResolvedForReply(messageId, replyId, req.user.email);
+        // Verificar si el usuario es admin o profesor de la asignatura
+        const found = forum.findMessageById(messageId);
+        if (!found || !found.post) {
+            return res.status(404).json({ error: { code: "NOT_FOUND", message: "Mensaje no encontrado" } });
+        }
+        
+        // Extraer subjectId del archivo (data/forums/{subjectId}.json)
+        const filePath = found.file;
+        const fileMatch = filePath.match(/forums[\/\\]([^\/\\]+)\.json$/);
+        const subjectId = fileMatch ? fileMatch[1] : null;
+        
+        if (!subjectId || !isSubjectAdmin(user, subjectId)) {
+            return res.status(403).json({ error: { code: "FORBIDDEN", message: "No tienes permisos para resolver reportes de esta asignatura" } });
+        }
+        
+        const result = forum.markReportsResolvedForReply(messageId, replyId, user.email);
         return res.json({ success: true, updated: result.updated });
     } catch (e) {
         console.error("Error resolviendo reportes de respuesta:", e);
@@ -799,7 +959,13 @@ router.delete("/api/messages/:messageId/reply/:replyId", withAuth, async (req, r
         }
 
         const user = req.user || null;
-        const isAdmin = user ? user.isAdmin === true || user.role === "admin" : false;
+        
+        // Extraer subjectId del archivo (data/forums/{subjectId}.json)
+        const filePath = found.file;
+        const fileMatch = filePath.match(/forums[\/\\]([^\/\\]+)\.json$/);
+        const subjectId = fileMatch ? fileMatch[1] : null;
+        
+        const isAdmin = subjectId && user ? isSubjectAdmin(user, subjectId) : (user && (user.isAdmin === true || user.role === "admin"));
         const isOwner = user && (reply.userName === user.name || reply.userEmail === user.email);
 
         if (!isAdmin && !isOwner) {

@@ -339,3 +339,23 @@ export function modifySubjectById(oldId, incoming) {
         return { code: 0, id: oldId, newCode: updated.code };
     }
 }
+
+// Verificar si un usuario es profesor de una asignatura
+// Los profesores pueden ser un string o un array de emails
+export function isUserProfessor(subject, userEmail) {
+    if (!subject || !userEmail) return false;
+    
+    const professors = subject.professors || subject.professor;
+    
+    // Si es un array, buscar el email
+    if (Array.isArray(professors)) {
+        return professors.includes(userEmail);
+    }
+    
+    // Si es un string, comparar directamente
+    if (typeof professors === "string") {
+        return professors === userEmail;
+    }
+    
+    return false;
+}
