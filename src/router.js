@@ -4,6 +4,7 @@ import multer from "multer";
 import * as auth from "./authService.js";
 import * as subjects from "./subjectService.js";
 import * as forum from "./forumService.js";
+import * as calendar from "./calendarService.js";
 import User from "./User.js";
 
 const router = express.Router();
@@ -189,11 +190,11 @@ function withSubjectAdmin(req, res, next) {
 function isSubjectAdmin(user, subjectId) {
     // Los admins globales siempre tienen permisos
     if (!user || user.isRole("admin")) return true;
-    
+
     // Para no-admins, verificar si es profesor de la asignatura
     const subject = subjects.getSubject(subjectId);
     if (!subject) return false;
-    
+
     return subjects.isUserProfessor(subject, user.email);
 }
 
@@ -351,10 +352,12 @@ router.get("/api/subjects/:id/reports", withSubjectAdmin, (req, res) => {
     try {
         const subjectId = req.params.id;
         const reports = forum.getReports() || [];
-        const activeReports = reports.filter((r) => !r.resolved).filter((r) => {
-            const sid = r.subjectId || (r.message && r.message.subjectId);
-            return String(sid) === String(subjectId);
-        });
+        const activeReports = reports
+            .filter((r) => !r.resolved)
+            .filter((r) => {
+                const sid = r.subjectId || (r.message && r.message.subjectId);
+                return String(sid) === String(subjectId);
+            });
 
         const enriched = activeReports
             .map((r) => {
@@ -527,6 +530,65 @@ router.post("/api/subjects/:id/filters", withSubjectAdmin, (req, res) => {
     }
 });
 
+router.get("/api/subjects/:id/calendar", withAuth, (req, res) => {
+    try {
+        const id = req.params.id;
+        const alias = subjects.getAlias ? subjects.getAlias(id) : null;
+        const subject = getSubjectById(alias || id);
+        if (!subject || subject.title === "Asignatura no encontrada") {
+            return res.status(404).json({ error: { code: "NOT_FOUND" } });
+        }
+        const data = calendar.getCalendar(subject.id);
+        data.subjectId = subject.id;
+        return res.json(data);
+    } catch (e) {
+        console.error("Error obteniendo calendario:", e);
+        return res.status(500).json({ error: { code: "SERVER", message: "Error recuperando calendario" } });
+    }
+});
+
+router.post("/api/subjects/:id/calendar/events", withSubjectAdmin, (req, res) => {
+    try {
+        const id = req.params.id;
+        const alias = subjects.getAlias ? subjects.getAlias(id) : null;
+        const subject = getSubjectById(alias || id);
+        if (!subject || subject.title === "Asignatura no encontrada") {
+            return res.status(404).json({ error: { code: "NOT_FOUND" } });
+        }
+        const event = calendar.addEvent(subject.id, req.body || {});
+        const updated = calendar.getCalendar(subject.id);
+        updated.subjectId = subject.id;
+        return res.status(201).json({ event, calendar: updated });
+    } catch (e) {
+        if (e && (e.code === "INVALID_DATE" || e.code === "TITLE_REQUIRED")) {
+            return res.status(400).json({ error: { code: e.code, message: e.message || "Datos inválidos" } });
+        }
+        console.error("Error añadiendo evento de calendario:", e);
+        return res.status(500).json({ error: { code: "SERVER", message: "Error guardando evento" } });
+    }
+});
+
+router.delete("/api/subjects/:id/calendar/events/:eventId", withSubjectAdmin, (req, res) => {
+    try {
+        const id = req.params.id;
+        const alias = subjects.getAlias ? subjects.getAlias(id) : null;
+        const subject = getSubjectById(alias || id);
+        if (!subject || subject.title === "Asignatura no encontrada") {
+            return res.status(404).json({ error: { code: "NOT_FOUND" } });
+        }
+        const removed = calendar.removeEvent(subject.id, req.params.eventId);
+        if (!removed) {
+            return res.status(404).json({ error: { code: "NOT_FOUND", message: "Evento no encontrado" } });
+        }
+        const updated = calendar.getCalendar(subject.id);
+        updated.subjectId = subject.id;
+        return res.json({ removed, calendar: updated });
+    } catch (e) {
+        console.error("Error eliminando evento de calendario:", e);
+        return res.status(500).json({ error: { code: "SERVER", message: "Error eliminando evento" } });
+    }
+});
+
 router.post("/createSubject", withAdmin, (req, res) => {
     try {
         const body = req.body.subject || req.body || {};
@@ -626,13 +688,13 @@ router.delete("/api/messages/:id", withAuth, async (req, res) => {
 
         const post = found.post;
         const user = req.user || null;
-        
+
         // Extraer subjectId del archivo (data/forums/{subjectId}.json)
         const filePath = found.file;
         const fileMatch = filePath.match(/forums[\/\\]([^\/\\]+)\.json$/);
         const subjectId = fileMatch ? fileMatch[1] : null;
-        
-        const isAdmin = subjectId && user ? isSubjectAdmin(user, subjectId) : (user && (user.isAdmin === true || user.role === "admin"));
+
+        const isAdmin = subjectId && user ? isSubjectAdmin(user, subjectId) : user && (user.isAdmin === true || user.role === "admin");
         const isOwner = user && (post.userName === user.name || post.userEmail === user.email);
 
         if (!isAdmin && !isOwner) return res.status(403).json({ error: "Forbidden" });
@@ -782,11 +844,11 @@ router.post("/api/users/ban", withAdmin, (req, res) => {
         if (!email) return res.status(400).json({ error: { code: "BAD_REQUEST", message: "Falta el email del usuario" } });
         const u = User.getFromFile(email);
         if (typeof u === "number") return res.status(404).json({ error: { code: "NOT_FOUND", message: "Usuario no encontrado" } });
-        
+
         // banDuration puede ser null (permanente) o un número en milisegundos
         const banDuration = req.body.banDuration ? parseInt(req.body.banDuration) : null;
         u.setBanned(true, banDuration);
-        
+
         return res.json({ success: true });
     } catch (e) {
         console.error("Error baneando usuario:", e);
@@ -798,23 +860,23 @@ router.post("/api/users/ban", withAdmin, (req, res) => {
 router.post("/api/reports/resolve-message/:messageId", withAuth, (req, res) => {
     const messageId = req.params.messageId;
     const user = req.user;
-    
+
     try {
         // Verificar si el usuario es admin o profesor de la asignatura
         const found = forum.findMessageById(messageId);
         if (!found || !found.post) {
             return res.status(404).json({ error: { code: "NOT_FOUND", message: "Mensaje no encontrado" } });
         }
-        
+
         // Extraer subjectId del archivo (data/forums/{subjectId}.json)
         const filePath = found.file;
         const fileMatch = filePath.match(/forums[\/\\]([^\/\\]+)\.json$/);
         const subjectId = fileMatch ? fileMatch[1] : null;
-        
+
         if (!subjectId || !isSubjectAdmin(user, subjectId)) {
             return res.status(403).json({ error: { code: "FORBIDDEN", message: "No tienes permisos para resolver reportes de esta asignatura" } });
         }
-        
+
         if (!forum.markReportsResolvedForMessage) return res.status(501).json({ error: { code: "NOT_IMPLEMENTED" } });
         const result = forum.markReportsResolvedForMessage(messageId, user.email || null);
         return res.json({ success: true, updated: result.updated });
@@ -918,23 +980,23 @@ router.post("/api/messages/:messageId/reply/:replyId/report", withAuth, (req, re
 router.post("/api/reports/resolve-reply/:messageId/:replyId", withAuth, (req, res) => {
     const { messageId, replyId } = req.params;
     const user = req.user;
-    
+
     try {
         // Verificar si el usuario es admin o profesor de la asignatura
         const found = forum.findMessageById(messageId);
         if (!found || !found.post) {
             return res.status(404).json({ error: { code: "NOT_FOUND", message: "Mensaje no encontrado" } });
         }
-        
+
         // Extraer subjectId del archivo (data/forums/{subjectId}.json)
         const filePath = found.file;
         const fileMatch = filePath.match(/forums[\/\\]([^\/\\]+)\.json$/);
         const subjectId = fileMatch ? fileMatch[1] : null;
-        
+
         if (!subjectId || !isSubjectAdmin(user, subjectId)) {
             return res.status(403).json({ error: { code: "FORBIDDEN", message: "No tienes permisos para resolver reportes de esta asignatura" } });
         }
-        
+
         const result = forum.markReportsResolvedForReply(messageId, replyId, user.email);
         return res.json({ success: true, updated: result.updated });
     } catch (e) {
@@ -959,13 +1021,13 @@ router.delete("/api/messages/:messageId/reply/:replyId", withAuth, async (req, r
         }
 
         const user = req.user || null;
-        
+
         // Extraer subjectId del archivo (data/forums/{subjectId}.json)
         const filePath = found.file;
         const fileMatch = filePath.match(/forums[\/\\]([^\/\\]+)\.json$/);
         const subjectId = fileMatch ? fileMatch[1] : null;
-        
-        const isAdmin = subjectId && user ? isSubjectAdmin(user, subjectId) : (user && (user.isAdmin === true || user.role === "admin"));
+
+        const isAdmin = subjectId && user ? isSubjectAdmin(user, subjectId) : user && (user.isAdmin === true || user.role === "admin");
         const isOwner = user && (reply.userName === user.name || reply.userEmail === user.email);
 
         if (!isAdmin && !isOwner) {

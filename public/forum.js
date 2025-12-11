@@ -6,6 +6,7 @@ const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 
 const PRESET_COLORS = ["#6366f1", "#06b6d4", "#22c55e", "#f59e0b", "#ec4899", "#8b5cf6", "#0ea5e9", "#14b8a6"];
+const CALENDAR_MAX_YEAR = 2035;
 
 const store = {
     getSession() {
@@ -89,9 +90,32 @@ const forumApp = {
         postsContainer: $("#postsContainer"),
         newMessageForm: $("#newMessageForm"),
         deleteForumForm: $("#deleteForumForm"),
+        calendarCard: $("#calendarCard"),
+        calendarMonthLabel: $("#calendarMonthLabel"),
+        calendarDays: $("#calendarDays"),
+        calendarSelectedLabel: $("#calendarSelectedLabel"),
+        calendarEventList: $("#calendarEventList"),
+        calendarPrev: $("#calendarPrev"),
+        calendarNext: $("#calendarNext"),
+        calendarAddForm: $("#calendarAddForm"),
+        calendarEventDate: $("#calendarEventDate"),
+        calendarEventDay: $("#calendarEventDay"),
+        calendarEventMonth: $("#calendarEventMonth"),
+        calendarEventYear: $("#calendarEventYear"),
+        calendarEventTitle: $("#calendarEventTitle"),
+        calendarEventDescription: $("#calendarEventDescription"),
+        calendarDetail: $("#calendarDetail"),
+        calendarAddWrapper: $("#calendarAddWrapper"),
     },
     user: null,
     subject: null,
+    calendarData: null,
+    calendarState: null,
+    calendarEventsByDate: new Map(),
+    calendarEvents: [],
+    isCalendarAdmin: false,
+    _calendarYearRange: null,
+    _datePickerSyncing: false,
 
     // Muestra el hint de "Aún no hay mensajes" si no queda ningún post renderizado
     updateEmptyHint() {
@@ -110,6 +134,18 @@ const forumApp = {
         } catch (e) {}
     },
 
+    initCalendarState() {
+        const today = new Date();
+        const todayStr = this.formatDate(today);
+        this.calendarState = {
+            year: today.getFullYear(),
+            month: today.getMonth(),
+            selectedDate: null,
+            today: todayStr,
+        };
+        this.clampCalendarStateToLimit();
+    },
+
     init() {
         this.user = store.getSession();
         if (!this.user) {
@@ -125,6 +161,10 @@ const forumApp = {
         this.el.avatar.style.background = store.getColor();
         this.el.avatarInitials.textContent = initialsOf(this.user.name || this.user.email);
 
+        this.initCalendarState();
+        this.setupCalendarDatePicker();
+        this.bindCalendarControls();
+
         // Elementos del modal de respuesta
         this.el.replyModal = $("#replyModal");
         this.el.replyForm = $("#replyForm");
@@ -139,6 +179,43 @@ const forumApp = {
 
         // Wire events
         this.wire();
+    },
+
+    bindCalendarControls() {
+        if (this._calendarBound) return;
+        this._calendarBound = true;
+
+        this.el.calendarPrev?.addEventListener("click", () => {
+            this.shiftCalendar(-1);
+        });
+
+        this.el.calendarNext?.addEventListener("click", () => {
+            this.shiftCalendar(1);
+        });
+
+        this.el.calendarDays?.addEventListener("click", (ev) => {
+            const target = ev.target;
+            const btn = target && target.closest ? target.closest(".calendar-day") : null;
+            if (!btn || btn.classList.contains("calendar-day--placeholder")) return;
+            const date = btn.dataset.date;
+            if (date) {
+                this.selectCalendarDate(date);
+            }
+        });
+
+        if (this.el.calendarAddForm) {
+            this.el.calendarAddForm.addEventListener("submit", (ev) => this.handleCalendarSubmit(ev));
+        }
+
+        this.el.calendarEventList?.addEventListener("click", (ev) => {
+            const target = ev.target;
+            const btn = target && target.closest ? target.closest(".calendar-event-delete") : null;
+            if (!btn) return;
+            const eventId = btn.dataset.eventId;
+            if (!eventId) return;
+            if (!confirm("¿Eliminar este evento del calendario?")) return;
+            this.handleCalendarDelete(eventId);
+        });
     },
 
     async fetchAndRenderReports() {
@@ -165,13 +242,13 @@ const forumApp = {
                 } else {
                 }
             } catch (e) {
-                console.error && console.error('fetchAndRenderReports: error fetching subject reports', e);
+                console.error && console.error("fetchAndRenderReports: error fetching subject reports", e);
             }
             if (!usedSubjectEndpoint) {
                 try {
-                    const urlAll = '/api/reports';
+                    const urlAll = "/api/reports";
                     const res = await fetch(urlAll);
-                    if (!res.ok) throw new Error('No se pudieron cargar los reportes');
+                    if (!res.ok) throw new Error("No se pudieron cargar los reportes");
                     const allReports = await res.json();
                     debugPayload.allReports = allReports;
                     reports = (allReports || []).filter((r) => {
@@ -179,19 +256,17 @@ const forumApp = {
                         return String(sid) === String(currentSubjectId);
                     });
                 } catch (e) {
-                    console.error && console.error('fetchAndRenderReports: error fetching all reports', e);
+                    console.error && console.error("fetchAndRenderReports: error fetching all reports", e);
                     throw e;
                 }
             }
             const list = $("#reportsList");
             if (!list) return;
             list.innerHTML = "";
-            const debugMode = location.search && location.search.indexOf('debugReports=1') !== -1;
+            const debugMode = location.search && location.search.indexOf("debugReports=1") !== -1;
             if (!reports || reports.length === 0) {
                 if (debugMode) {
-                    list.innerHTML = `<div style="padding:12px"><strong>Debug payload (subject endpoint):</strong><pre style="white-space:pre-wrap;max-height:360px;overflow:auto">${this.escapeHtml(
-                        JSON.stringify(debugPayload, null, 2)
-                    )}</pre></div>`;
+                    list.innerHTML = `<div style="padding:12px"><strong>Debug payload (subject endpoint):</strong><pre style="white-space:pre-wrap;max-height:360px;overflow:auto">${this.escapeHtml(JSON.stringify(debugPayload, null, 2))}</pre></div>`;
                     return;
                 }
                 list.innerHTML = `
@@ -266,7 +341,9 @@ const forumApp = {
                                     }
                                     ${
                                         this.user && isSubjectAdmin(this.user, this.subject)
-                                            ? `<button class="btn ban report-action-ban" data-message-id="${msg.id}" data-user-email="${this.escapeHtml(msg.userEmail || "")}" title="Banear usuario">Banear</button>`
+                                            ? `<button class="btn ban report-action-ban" data-message-id="${msg.id}" data-reply-id="${isReply ? this.escapeHtml(g.reply.id) : ""}" data-user-email="${this.escapeHtml(
+                                                  msg.userEmail || ""
+                                              )}" title="Banear usuario">Banear</button>`
                                             : ``
                                     }
                                     ${
@@ -340,10 +417,12 @@ const forumApp = {
                         }
                     } else if (b.classList.contains("report-action-ban")) {
                         const userEmail = b.dataset.userEmail;
+                        const messageId = b.dataset.messageId;
+                        const replyId = b.dataset.replyId;
                         if (!userEmail) return toast("No se puede banear: falta email del usuario");
-                        
+
                         // Mostrar modal personalizado para seleccionar duración
-                        this.showBanDurationModal(userEmail);
+                        this.showBanDurationModal(userEmail, messageId, replyId);
                     } else if (b.classList.contains("report-action-delete")) {
                         const messageId = b.dataset.messageId;
                         if (!messageId) return toast("ID de mensaje no disponible");
@@ -503,15 +582,62 @@ const forumApp = {
 
             this.subject = await response.json();
 
+            try {
+                const subjectColor = this.subject?.color || "var(--accent-2)";
+                document.querySelectorAll("[data-subject-color]").forEach((el) => {
+                    el.style.background = subjectColor;
+                });
+            } catch (e) {
+                console.error("No se pudo aplicar el color de la asignatura:", e);
+            }
+
             // Mostrar botón de editar asignatura si el usuario es profesor o admin
             const editSubjectBtn = document.getElementById("editSubjectBtn");
             if (editSubjectBtn && isSubjectAdmin(this.user, this.subject)) {
                 editSubjectBtn.style.display = "inline-block";
             }
 
-            // Cargar mensajes del foro
-            const rPosts = await fetch(`/api/subjects/${this.subject.id}/posts`);
-            const messages = rPosts.ok ? await rPosts.json() : [];
+            this.isCalendarAdmin = !!isSubjectAdmin(this.user, this.subject);
+            this.toggleCalendarAdminControls();
+
+            let messages = [];
+            let calendarData = null;
+            let calendarError = false;
+
+            const [rPosts, rCalendar] = await Promise.allSettled([fetch(`/api/subjects/${this.subject.id}/posts`), fetch(`/api/subjects/${this.subject.id}/calendar`)]);
+
+            if (rPosts.status === "fulfilled") {
+                const res = rPosts.value;
+                if (res.ok) {
+                    messages = await res.json();
+                } else {
+                    console.error("Error HTTP cargando mensajes del foro:", res.status, res.statusText);
+                }
+            } else {
+                console.error("Error cargando mensajes del foro:", rPosts.reason);
+            }
+
+            if (rCalendar.status === "fulfilled") {
+                const res = rCalendar.value;
+                if (res.ok) {
+                    calendarData = await res.json();
+                } else {
+                    calendarError = true;
+                    console.error("Error HTTP cargando calendario:", res.status, res.statusText);
+                }
+            } else {
+                calendarError = true;
+                console.error("Error cargando calendario:", rCalendar.reason);
+            }
+
+            if (!calendarData) {
+                calendarData = { subjectId: this.subject.id, events: [] };
+            }
+            this.applyCalendarData(calendarData);
+            if (calendarError) {
+                toast("No se pudo cargar el calendario");
+            }
+
             // Cargar reportes del usuario actual para deshabilitar botones ya reportados
             try {
                 const rMy = await fetch("/api/reports/my");
@@ -529,7 +655,7 @@ const forumApp = {
             }
 
             this.renderMessages(messages);
-            
+
             // Setup de permisos de profesor/admin después de cargar los datos
             this.setupProfessorPermissions();
         } catch (err) {
@@ -617,6 +743,616 @@ const forumApp = {
         }
     },
 
+    toggleCalendarAdminControls() {
+        const isAdmin = !!this.isCalendarAdmin;
+        if (this.el.calendarAddForm) {
+            this.el.calendarAddForm.style.display = isAdmin ? "grid" : "none";
+        }
+        if (this.el.calendarAddWrapper) {
+            this.el.calendarAddWrapper.hidden = !isAdmin;
+        }
+        if (this.el.calendarCard) {
+            this.el.calendarCard.classList.toggle("calendar-card--admin", isAdmin);
+        }
+        this.renderCalendarEvents();
+    },
+
+    setupCalendarDatePicker() {
+        const dayInput = this.el.calendarEventDay;
+        const monthSelect = this.el.calendarEventMonth;
+        const yearInput = this.el.calendarEventYear;
+        const hidden = this.el.calendarEventDate;
+        if (!dayInput || !monthSelect || !yearInput || !hidden) return;
+
+        monthSelect.innerHTML = "";
+        const monthPlaceholder = document.createElement("option");
+        monthPlaceholder.value = "";
+        monthPlaceholder.textContent = "Mes";
+        monthPlaceholder.disabled = true;
+        monthPlaceholder.selected = true;
+        monthSelect.appendChild(monthPlaceholder);
+
+        const monthFormatter = new Intl.DateTimeFormat("es-ES", { month: "long" });
+        for (let m = 0; m < 12; m++) {
+            const option = document.createElement("option");
+            option.value = String(m);
+            const label = monthFormatter.format(new Date(2024, m, 1));
+            option.textContent = label.charAt(0).toUpperCase() + label.slice(1);
+            monthSelect.appendChild(option);
+        }
+
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const initialMax = Math.min(CALENDAR_MAX_YEAR, currentYear + 5);
+        let initialMin = Number.isFinite(currentYear) ? Math.min(initialMax, currentYear - 1) : initialMax;
+        if (!Number.isFinite(initialMin)) initialMin = initialMax;
+        this._calendarYearRange = { min: initialMin, max: initialMax };
+        dayInput.min = 1;
+        dayInput.max = 31;
+        dayInput.value = "";
+
+        yearInput.min = this._calendarYearRange.min;
+        yearInput.max = this._calendarYearRange.max;
+        yearInput.value = "";
+
+        const enforceNumeric = (inputEl, { maxLength } = {}) => {
+            inputEl.addEventListener("input", () => {
+                const digitsOnly = (inputEl.value || "").replace(/\D+/g, "");
+                inputEl.value = maxLength ? digitsOnly.slice(0, maxLength) : digitsOnly;
+            });
+        };
+
+        enforceNumeric(dayInput, { maxLength: 2 });
+        enforceNumeric(yearInput, { maxLength: 4 });
+
+        const onChange = () => this.handleDatePickerChange();
+        dayInput.addEventListener("input", onChange);
+        dayInput.addEventListener("blur", onChange);
+        monthSelect.addEventListener("change", onChange);
+        yearInput.addEventListener("input", onChange);
+        yearInput.addEventListener("blur", onChange);
+
+        hidden.value = "";
+
+        if (this.calendarState?.selectedDate) {
+            this.syncCalendarDatePicker(this.calendarState.selectedDate, { keepCurrent: false });
+        }
+    },
+
+    ensureDatePickerYearRange(year) {
+        if (typeof year !== "number" || !Number.isFinite(year)) return null;
+        const limit = CALENDAR_MAX_YEAR;
+        if (!this._calendarYearRange) {
+            this._calendarYearRange = { min: Math.min(year, limit), max: limit };
+        }
+        if (year < this._calendarYearRange.min) {
+            this._calendarYearRange.min = year;
+        }
+        if (year > limit) {
+            year = limit;
+        }
+        this._calendarYearRange.max = limit;
+        if (this._calendarYearRange.min > limit) {
+            this._calendarYearRange.min = limit;
+        }
+        const yearInput = this.el.calendarEventYear;
+        if (yearInput) {
+            yearInput.min = this._calendarYearRange.min;
+            yearInput.max = limit;
+        }
+        return year;
+    },
+
+    handleDatePickerChange() {
+        if (this._datePickerSyncing) return;
+        const dayInput = this.el.calendarEventDay;
+        const monthSelect = this.el.calendarEventMonth;
+        const yearInput = this.el.calendarEventYear;
+        const hidden = this.el.calendarEventDate;
+        if (!dayInput || !monthSelect || !yearInput || !hidden) return;
+
+        const rawYear = (yearInput.value || "").trim();
+        const rawMonth = monthSelect.value;
+        const rawDay = (dayInput.value || "").trim();
+
+        if (!rawMonth || !rawYear) {
+            hidden.value = "";
+            return;
+        }
+
+        let year = Number(rawYear);
+        let month = Number(rawMonth);
+
+        if (!Number.isFinite(year) || !Number.isFinite(month)) {
+            hidden.value = "";
+            return;
+        }
+
+        const normalizedYear = this.ensureDatePickerYearRange(year);
+        if (typeof normalizedYear === "number") {
+            year = normalizedYear;
+        }
+
+        if (month < 0) month = 0;
+        if (month > 11) month = 11;
+
+        const maxDays = this.daysInMonth(year, month);
+        if (Number(dayInput.max) !== maxDays) {
+            dayInput.max = maxDays;
+        }
+
+        if (!rawDay) {
+            hidden.value = "";
+            this._datePickerSyncing = true;
+            try {
+                yearInput.value = String(year);
+                monthSelect.value = String(month);
+            } finally {
+                this._datePickerSyncing = false;
+            }
+            return;
+        }
+
+        let day = Number(rawDay);
+
+        if (!Number.isFinite(day)) {
+            hidden.value = "";
+            return;
+        }
+
+        if (day < 1) day = 1;
+        if (day > maxDays) day = maxDays;
+
+        this._datePickerSyncing = true;
+        try {
+            yearInput.value = String(year);
+            monthSelect.value = String(month);
+            dayInput.value = String(day);
+        } finally {
+            this._datePickerSyncing = false;
+        }
+
+        const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        hidden.value = iso;
+
+        if (this.calendarState?.selectedDate !== iso) {
+            this.selectCalendarDate(iso, { focus: false, ensureMonthVisible: true });
+        }
+    },
+
+    syncCalendarDatePicker(iso, { keepCurrent = false } = {}) {
+        const dayInput = this.el.calendarEventDay;
+        const monthSelect = this.el.calendarEventMonth;
+        const yearInput = this.el.calendarEventYear;
+        const hidden = this.el.calendarEventDate;
+        if (!dayInput || !monthSelect || !yearInput || !hidden) return;
+
+        if (this._datePickerSyncing) return;
+        this._datePickerSyncing = true;
+        try {
+            if (!iso) {
+                if (!keepCurrent) {
+                    dayInput.value = "";
+                    monthSelect.value = "";
+                    yearInput.value = "";
+                    hidden.value = "";
+                }
+                return;
+            }
+
+            const date = this.parseISODate(iso);
+            if (!date) {
+                if (!keepCurrent) hidden.value = "";
+                return;
+            }
+
+            let year = date.getFullYear();
+            const month = date.getMonth();
+            let day = date.getDate();
+
+            const normalizedYear = this.ensureDatePickerYearRange(year);
+            if (typeof normalizedYear === "number") {
+                year = normalizedYear;
+            }
+
+            const maxDays = this.daysInMonth(year, month);
+            dayInput.max = maxDays;
+            if (day > maxDays) {
+                day = maxDays;
+            }
+
+            dayInput.value = String(day);
+            monthSelect.value = String(month);
+            yearInput.value = String(year);
+            const normalizedDate = new Date(year, month, day);
+            hidden.value = this.formatDate(normalizedDate);
+        } finally {
+            this._datePickerSyncing = false;
+        }
+    },
+
+    applyCalendarData(data = {}) {
+        this.calendarData = data || {};
+        const events = Array.isArray(data.events) ? data.events : [];
+        this.calendarEvents = events;
+        this.buildCalendarIndex(events);
+        this.ensureCalendarSelection();
+        this.renderCalendar();
+    },
+
+    buildCalendarIndex(events = []) {
+        this.calendarEventsByDate = new Map();
+        events.forEach((evt) => {
+            if (!evt || !evt.date) return;
+            const iso = String(evt.date);
+            if (!this.calendarEventsByDate.has(iso)) {
+                this.calendarEventsByDate.set(iso, []);
+            }
+            this.calendarEventsByDate.get(iso).push(evt);
+        });
+        this.calendarEventsByDate.forEach((list) => {
+            list.sort((a, b) => a.title.localeCompare(b.title, "es", { sensitivity: "base" }));
+        });
+    },
+
+    ensureCalendarSelection() {
+        if (!this.calendarState) this.initCalendarState();
+        const state = this.calendarState;
+        if (!state) return;
+
+        if (typeof state.year !== "number" || typeof state.month !== "number") {
+            const reference = this.parseISODate(state.today) || new Date();
+            state.year = reference.getFullYear();
+            state.month = reference.getMonth();
+        }
+
+        if (state.selectedDate && !this.parseISODate(state.selectedDate)) {
+            state.selectedDate = null;
+        }
+
+        this.clampCalendarStateToLimit();
+    },
+
+    clampCalendarStateToLimit() {
+        if (!this.calendarState) return;
+        const state = this.calendarState;
+        const limit = CALENDAR_MAX_YEAR;
+        if (typeof state.year === "number" && state.year > limit) {
+            state.year = limit;
+            if (typeof state.month === "number") {
+                state.month = Math.min(Math.max(state.month, 0), 11);
+            } else {
+                state.month = 0;
+            }
+        }
+
+        if (state.selectedDate) {
+            const selected = this.parseISODate(state.selectedDate);
+            if (!selected || selected.getFullYear() > limit) {
+                state.selectedDate = null;
+            }
+        }
+    },
+
+    renderCalendar() {
+        if (!this.el.calendarCard || !this.calendarState) return;
+        const { year, month } = this.calendarState;
+        if (this.el.calendarMonthLabel) {
+            this.el.calendarMonthLabel.textContent = this.formatMonthLabel(year, month);
+        }
+        this.renderCalendarDays();
+        this.renderCalendarEvents();
+    },
+
+    renderCalendarDays() {
+        const grid = this.el.calendarDays;
+        if (!grid || !this.calendarState) return;
+        grid.innerHTML = "";
+
+        const { year, month, selectedDate, today } = this.calendarState;
+        const firstOfMonth = new Date(year, month, 1);
+        const totalDays = new Date(year, month + 1, 0).getDate();
+        const offset = (firstOfMonth.getDay() + 6) % 7; // Lunes como primer día
+
+        for (let i = 0; i < offset; i++) {
+            const placeholder = document.createElement("div");
+            placeholder.className = "calendar-day calendar-day--placeholder";
+            placeholder.setAttribute("aria-hidden", "true");
+            grid.appendChild(placeholder);
+        }
+
+        for (let day = 1; day <= totalDays; day++) {
+            const date = new Date(year, month, day);
+            const iso = this.formatDate(date);
+            const events = this.calendarEventsByDate.get(iso) || [];
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "calendar-day";
+            button.dataset.date = iso;
+
+            if (iso === today) button.classList.add("calendar-day--today");
+            if (iso === selectedDate) button.classList.add("calendar-day--selected");
+            if (events.length) button.classList.add("calendar-day--has-events");
+
+            button.setAttribute("aria-label", `${day} de ${this.formatMonthLabel(year, month)}${events.length ? `, ${events.length} evento${events.length > 1 ? "s" : ""}` : ""}`);
+
+            const number = document.createElement("span");
+            number.className = "calendar-day-number";
+            number.textContent = String(day);
+            button.appendChild(number);
+
+            if (events.length) {
+                const eventsWrap = document.createElement("div");
+                eventsWrap.className = "calendar-day-events";
+                const preview = events.slice(0, 2);
+                preview.forEach((evt) => {
+                    const pill = document.createElement("span");
+                    pill.className = "calendar-day-event";
+                    const label = (evt.title || "Evento").toString().trim() || "Evento";
+                    pill.textContent = label.slice(0, 18);
+                    pill.title = label;
+                    eventsWrap.appendChild(pill);
+                });
+                if (events.length > 2) {
+                    const more = document.createElement("span");
+                    more.className = "calendar-day-more";
+                    more.textContent = `+${events.length - 2}`;
+                    eventsWrap.appendChild(more);
+                }
+                button.appendChild(eventsWrap);
+            }
+
+            grid.appendChild(button);
+        }
+
+        const totalCells = offset + totalDays;
+        const remainder = totalCells % 7;
+        if (remainder) {
+            for (let i = remainder; i < 7; i++) {
+                const placeholder = document.createElement("div");
+                placeholder.className = "calendar-day calendar-day--placeholder";
+                placeholder.setAttribute("aria-hidden", "true");
+                grid.appendChild(placeholder);
+            }
+        }
+    },
+
+    renderCalendarEvents() {
+        const list = this.el.calendarEventList;
+        const label = this.el.calendarSelectedLabel;
+        const detail = this.el.calendarDetail;
+        if (!this.calendarState) return;
+        const selectedDate = this.calendarState.selectedDate;
+        const hasSelection = !!selectedDate;
+
+        this.syncCalendarDatePicker(selectedDate || null, { keepCurrent: false });
+
+        if (detail) {
+            detail.hidden = !hasSelection;
+        }
+
+        if (label) {
+            const text = hasSelection ? this.formatHumanDate(selectedDate) : "Selecciona un día";
+            label.textContent = text;
+        }
+
+        if (!list) return;
+        list.innerHTML = "";
+
+        if (!hasSelection) {
+            const prompt = document.createElement("li");
+            prompt.className = "calendar-empty";
+            prompt.textContent = "Selecciona un día para ver eventos.";
+            list.appendChild(prompt);
+            return;
+        }
+
+        if (this.el.calendarEventDate) {
+            this.el.calendarEventDate.value = selectedDate;
+        }
+
+        const events = this.calendarEventsByDate.get(selectedDate) || [];
+
+        if (!events.length) {
+            const empty = document.createElement("li");
+            empty.className = "calendar-empty";
+            empty.textContent = "No hay eventos para este día.";
+            list.appendChild(empty);
+            return;
+        }
+
+        events.forEach((evt) => {
+            const item = document.createElement("li");
+            item.className = "calendar-event";
+            item.dataset.eventId = evt.id;
+
+            const main = document.createElement("div");
+            main.className = "calendar-event-main";
+            const titleHtml = this.escapeHtml(evt.title || "Evento");
+            const descHtml = evt.description ? `<div class="calendar-event-desc">${this.escapeHtml(evt.description)}</div>` : "";
+            main.innerHTML = `<div class="calendar-event-title">${titleHtml}</div>${descHtml}`;
+            item.appendChild(main);
+
+            if (this.isCalendarAdmin) {
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.className = "calendar-event-delete";
+                remove.dataset.eventId = evt.id;
+                remove.title = "Eliminar evento";
+                remove.setAttribute("aria-label", "Eliminar evento");
+                remove.textContent = "✕";
+                item.appendChild(remove);
+            }
+
+            list.appendChild(item);
+        });
+    },
+
+    selectCalendarDate(date, opts = {}) {
+        const parsed = this.parseISODate(date);
+        if (!parsed) {
+            toast("Fecha de calendario inválida");
+            return;
+        }
+        if (!this.calendarState) this.initCalendarState();
+        const iso = this.formatDate(parsed);
+        this.calendarState.selectedDate = iso;
+        if (opts.ensureMonthVisible !== false) {
+            this.calendarState.year = parsed.getFullYear();
+            this.calendarState.month = parsed.getMonth();
+        }
+        this.renderCalendar();
+
+        if (opts.focus !== false) {
+            const selectorDate = window.CSS && typeof window.CSS.escape === "function" ? window.CSS.escape(iso) : iso.replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+            const dayBtn = this.el.calendarDays?.querySelector?.(`.calendar-day[data-date="${selectorDate}"]`);
+            dayBtn?.focus({ preventScroll: false });
+        }
+    },
+
+    shiftCalendar(delta) {
+        if (!this.calendarState) this.initCalendarState();
+        const state = this.calendarState;
+        if (delta > 0 && state.year === CALENDAR_MAX_YEAR && state.month === 11) {
+            return;
+        }
+        const current = new Date(state.year, state.month, 1);
+        current.setMonth(current.getMonth() + delta);
+        state.year = current.getFullYear();
+        state.month = current.getMonth();
+
+        this.clampCalendarStateToLimit();
+
+        const selected = this.parseISODate(state.selectedDate);
+        if (!selected || selected.getFullYear() !== state.year || selected.getMonth() !== state.month) {
+            state.selectedDate = null;
+        }
+
+        this.renderCalendar();
+    },
+
+    async handleCalendarSubmit(ev) {
+        ev.preventDefault();
+        if (!this.isCalendarAdmin) {
+            toast("No tienes permisos para modificar el calendario");
+            return;
+        }
+        if (!this.subject || !this.subject.id) {
+            toast("Foro no cargado");
+            return;
+        }
+
+        const date = this.el.calendarEventDate?.value;
+        const title = (this.el.calendarEventTitle?.value || "").trim();
+        const description = (this.el.calendarEventDescription?.value || "").trim();
+
+        if (!this.parseISODate(date)) {
+            toast("Selecciona una fecha válida");
+            return;
+        }
+        if (!title) {
+            toast("Añade un título para el evento");
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/subjects/${encodeURIComponent(this.subject.id)}/calendar/events`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ date, title, description }),
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => null);
+                const message = err?.error?.message || "No se pudo guardar el evento";
+                throw new Error(message);
+            }
+
+            const payload = await res.json();
+            if (payload?.calendar) {
+                this.applyCalendarData(payload.calendar);
+                this.selectCalendarDate(date, { focus: false, ensureMonthVisible: true });
+            }
+            this.el.calendarAddForm?.reset();
+            if (this.el.calendarEventDate) this.el.calendarEventDate.value = date;
+            toast("Evento guardado");
+        } catch (e) {
+            console.error("Error guardando evento de calendario:", e);
+            toast(e.message || "No se pudo guardar el evento");
+        }
+    },
+
+    async handleCalendarDelete(eventId) {
+        if (!this.isCalendarAdmin) {
+            toast("No tienes permisos para modificar el calendario");
+            return;
+        }
+        if (!this.subject || !this.subject.id) {
+            toast("Foro no cargado");
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/subjects/${encodeURIComponent(this.subject.id)}/calendar/events/${encodeURIComponent(eventId)}`, {
+                method: "DELETE",
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => null);
+                const message = err?.error?.message || "No se pudo eliminar el evento";
+                throw new Error(message);
+            }
+
+            const payload = await res.json();
+            if (payload?.calendar) {
+                this.applyCalendarData(payload.calendar);
+            }
+            toast("Evento eliminado");
+        } catch (e) {
+            console.error("Error eliminando evento del calendario:", e);
+            toast(e.message || "No se pudo eliminar el evento");
+        }
+    },
+
+    formatDate(value) {
+        const date = value instanceof Date ? value : this.parseISODate(value);
+        if (!date || Number.isNaN(date.getTime())) return null;
+        const y = String(date.getFullYear());
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+    },
+
+    parseISODate(value) {
+        if (!value) return null;
+        if (value instanceof Date) return value;
+        const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match) return null;
+        const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+        if (Number.isNaN(date.getTime())) return null;
+        if (date.getFullYear() !== Number(match[1]) || date.getMonth() !== Number(match[2]) - 1 || date.getDate() !== Number(match[3])) {
+            return null;
+        }
+        return date;
+    },
+
+    formatHumanDate(iso) {
+        const date = this.parseISODate(iso);
+        if (!date) return "Selecciona un día";
+        const formatted = date.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+        return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+    },
+
+    formatMonthLabel(year, month) {
+        const date = new Date(year, month, 1);
+        const formatted = date.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
+        return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+    },
+
+    daysInMonth(year, monthIndex) {
+        return new Date(year, monthIndex + 1, 0).getDate();
+    },
+
     renderMessages(messages) {
         const container = this.el.postsContainer;
 
@@ -697,6 +1433,18 @@ const forumApp = {
             }, 0);
         } catch (e) {
             // noop
+        }
+    },
+
+    async refreshPostsAfterModeration() {
+        try {
+            if (!this.subject || !this.subject.id) return;
+            const res = await fetch(`/api/subjects/${encodeURIComponent(this.subject.id)}/posts`);
+            if (!res.ok) return;
+            const messages = await res.json();
+            this.renderMessages(messages);
+        } catch (err) {
+            console.error("Error actualizando mensajes tras moderación:", err);
         }
     },
 
@@ -1682,25 +2430,25 @@ window.addEventListener("DOMContentLoaded", () => {
             forumApp.applyHashContext();
         }
     }, 0);
-    
+
     // Configurar modal de duración de baneo
     const banDurationModal = document.getElementById("banDurationModal");
     const closeBanModalBtn = document.getElementById("closeBanModal");
     const cancelBanBtn = document.getElementById("cancelBan");
     const banDurationOptions = document.getElementById("banDurationOptions");
-    
+
     if (closeBanModalBtn) {
         closeBanModalBtn.addEventListener("click", () => {
             if (banDurationModal) banDurationModal.classList.remove("show");
         });
     }
-    
+
     if (cancelBanBtn) {
         cancelBanBtn.addEventListener("click", () => {
             if (banDurationModal) banDurationModal.classList.remove("show");
         });
     }
-    
+
     // Cerrar modal al hacer clic fuera del contenido
     if (banDurationModal) {
         banDurationModal.addEventListener("click", (e) => {
@@ -1709,30 +2457,30 @@ window.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
-    
+
     // Método para mostrar el modal de duración de baneo
     if (typeof forumApp !== "undefined") {
-        forumApp.showBanDurationModal = function(userEmail) {
+        forumApp.showBanDurationModal = function (userEmail, messageId) {
             const modal = document.getElementById("banDurationModal");
             const userEmailEl = document.getElementById("banUserEmail");
             const optionsContainer = document.getElementById("banDurationOptions");
-            
+
             if (!modal || !userEmailEl || !optionsContainer) return;
-            
+
             // Establecer email del usuario
             userEmailEl.textContent = userEmail;
-            
+
             // Limpiar listeners anteriores
             const newOptionsContainer = optionsContainer.cloneNode(true);
             optionsContainer.parentNode.replaceChild(newOptionsContainer, optionsContainer);
-            
+
             // Añadir listeners a las opciones
-            newOptionsContainer.querySelectorAll(".ban-option").forEach(option => {
+            newOptionsContainer.querySelectorAll(".ban-option").forEach((option) => {
                 option.addEventListener("click", async () => {
                     const hours = parseFloat(option.dataset.hours);
                     let banDuration = null;
                     let durationText = "permanentemente";
-                    
+
                     if (hours > 0) {
                         banDuration = hours * 60 * 60 * 1000; // Convertir a milisegundos
                         if (hours === 1) durationText = "por 1 hora";
@@ -1741,12 +2489,12 @@ window.addEventListener("DOMContentLoaded", () => {
                         else if (hours === 720) durationText = "por 30 días";
                         else durationText = `por ${hours} horas`;
                     }
-                    
+
                     if (!confirm(`¿Banear a ${userEmail} ${durationText}?`)) return;
-                    
+
                     // Cerrar modal
                     modal.classList.remove("show");
-                    
+
                     // Realizar el baneo
                     try {
                         const response = await fetch("/api/users/ban", {
@@ -1754,13 +2502,66 @@ window.addEventListener("DOMContentLoaded", () => {
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ email: userEmail, banDuration: banDuration }),
                         });
-                        
+
                         if (!response.ok) {
                             const err = await response.json().catch(() => ({}));
                             throw err || { message: "Error" };
                         }
-                        
-                        toast("Usuario baneado correctamente");
+
+                        let deletedContentType = null; // 'message' | 'reply'
+                        let deleteFailed = false;
+                        let deleteErrorMessage = null;
+
+                        if (replyId) {
+                            if (!messageId) {
+                                deleteFailed = true;
+                                deleteErrorMessage = "no se pudo borrar la respuesta (ID de mensaje no disponible)";
+                            } else {
+                                try {
+                                    const deleteResponse = await fetch(`/api/messages/${encodeURIComponent(messageId)}/reply/${encodeURIComponent(replyId)}`, { method: "DELETE" });
+                                    if (!deleteResponse.ok) {
+                                        const deleteErr = await deleteResponse.json().catch(() => ({}));
+                                        throw deleteErr || { message: "Error" };
+                                    }
+                                    deletedContentType = "reply";
+                                    await this.refreshPostsAfterModeration();
+                                } catch (deleteErr) {
+                                    deleteFailed = true;
+                                    deleteErrorMessage = deleteErr && deleteErr.error && deleteErr.error.message ? deleteErr.error.message : deleteErr?.message || null;
+                                    console.error("Error borrando respuesta tras baneo:", deleteErr);
+                                }
+                            }
+                        } else if (messageId) {
+                            try {
+                                const deleteResponse = await fetch(`/api/messages/${encodeURIComponent(messageId)}`, { method: "DELETE" });
+                                if (!deleteResponse.ok) {
+                                    const deleteErr = await deleteResponse.json().catch(() => ({}));
+                                    throw deleteErr || { message: "Error" };
+                                }
+                                deletedContentType = "message";
+                                try {
+                                    const postEl = document.querySelector(`#msg-${CSS.escape(messageId)}`);
+                                    if (postEl) postEl.remove();
+                                } catch (e) {}
+                                this.updateEmptyHint && this.updateEmptyHint();
+                                await this.refreshPostsAfterModeration();
+                            } catch (deleteErr) {
+                                deleteFailed = true;
+                                deleteErrorMessage = deleteErr && deleteErr.error && deleteErr.error.message ? deleteErr.error.message : deleteErr?.message || null;
+                                console.error("Error borrando mensaje tras baneo:", deleteErr);
+                            }
+                        }
+
+                        if (deletedContentType === "message") {
+                            toast("Usuario baneado y mensaje borrado");
+                        } else if (deletedContentType === "reply") {
+                            toast("Usuario baneado y respuesta borrada");
+                        } else if (deleteFailed) {
+                            const fallback = deleteErrorMessage ? `Usuario baneado, pero ${deleteErrorMessage}` : replyId ? "Usuario baneado, pero no se pudo borrar la respuesta" : "Usuario baneado, pero no se pudo borrar el mensaje";
+                            toast(fallback);
+                        } else {
+                            toast("Usuario baneado correctamente");
+                        }
                         await this.fetchAndRenderReports();
                     } catch (err) {
                         console.error("Error baneando usuario:", err);
@@ -1768,10 +2569,9 @@ window.addEventListener("DOMContentLoaded", () => {
                     }
                 });
             });
-            
+
             // Mostrar modal
             modal.classList.add("show");
         };
     }
 });
-

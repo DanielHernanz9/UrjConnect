@@ -2,7 +2,8 @@ import fs from "fs";
 import path from "path";
 
 const FORUM_DIR = "data/forums";
-const FILTERS_FILE = path.join("data", "filters.json");
+const FILTERS_DIR = path.join("data", "filters");
+const LEGACY_FILTERS_FILE = path.join("data", "filters.json");
 
 function ensureDir() {
     if (!fs.existsSync(FORUM_DIR)) {
@@ -88,11 +89,17 @@ export function deleteForum(subjectId) {
     } catch (e) {}
     // Limpiar reportes por subjectId (si está presente en los reportes)
     try {
-        ensureReportsFile();
-        const all = getReports();
-        const next = all.filter((r) => String(r?.subjectId || "") !== String(subjectId));
-        if (next.length !== all.length) {
-            fs.writeFileSync(REPORTS_FILE, JSON.stringify(next, null, 2), "utf8");
+        const map = readAllReportsMap();
+        let changed = false;
+        map.forEach((arr, key) => {
+            const next = arr.filter((r) => String(r?.subjectId || keyToSubjectId(key)) !== String(subjectId));
+            if (next.length !== arr.length) {
+                changed = true;
+                map.set(key, next);
+            }
+        });
+        if (changed) {
+            writeAllReportsMap(map);
         }
     } catch (e) {}
 }
@@ -223,16 +230,19 @@ export function deleteMessage(messageId) {
  */
 export function removeReportsForMessage(messageId) {
     if (!messageId) return 0;
-    ensureReportsFile();
-    try {
-        const arr = getReports();
-        const filtered = arr.filter((r) => !(r && String(r.messageId) === String(messageId)));
-        if (filtered.length === arr.length) return 0;
-        fs.writeFileSync(REPORTS_FILE, JSON.stringify(filtered, null, 2), "utf8");
-        return arr.length - filtered.length;
-    } catch (e) {
-        return 0;
+    const map = readAllReportsMap();
+    let removed = 0;
+    map.forEach((arr, key) => {
+        const next = arr.filter((r) => !(r && String(r.messageId) === String(messageId)));
+        if (next.length !== arr.length) {
+            removed += arr.length - next.length;
+            map.set(key, next);
+        }
+    });
+    if (removed > 0) {
+        writeAllReportsMap(map);
     }
+    return removed;
 }
 
 /**
@@ -316,18 +326,42 @@ export function findReply(messageId, replyId) {
 }
 
 // === Reportes ===
-const REPORTS_FILE = path.join("data", "reports.json");
+const REPORTS_DIR = path.join("data", "reports");
+const LEGACY_REPORTS_FILE = path.join("data", "reports.json");
+const DEFAULT_REPORT_SUBJECT_KEY = "__default__";
+let legacyReportsMigrated = false;
 
-function ensureReportsFile() {
-    const dir = path.dirname(REPORTS_FILE);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    if (!fs.existsSync(REPORTS_FILE)) fs.writeFileSync(REPORTS_FILE, JSON.stringify([], null, 2), "utf8");
+function ensureReportsDir() {
+    if (!fs.existsSync(REPORTS_DIR)) {
+        fs.mkdirSync(REPORTS_DIR, { recursive: true });
+    }
 }
 
-export function getReports() {
-    ensureReportsFile();
+function sanitizeReportSubject(subjectId) {
+    const base = String(subjectId || "").trim();
+    if (!base) return "default";
+    return base.replace(/[^a-zA-Z0-9._-]+/g, "-");
+}
+
+function normalizeReportKey(subjectId) {
+    const value = String(subjectId ?? "").trim();
+    return value.length ? value : DEFAULT_REPORT_SUBJECT_KEY;
+}
+
+function keyToSubjectId(key) {
+    return key === DEFAULT_REPORT_SUBJECT_KEY ? "" : key;
+}
+
+function reportFileForKey(key) {
+    ensureReportsDir();
+    const subjectId = keyToSubjectId(key);
+    const safe = sanitizeReportSubject(subjectId || key);
+    return path.join(REPORTS_DIR, `${safe}.json`);
+}
+
+function readReportsFile(filePath) {
     try {
-        const raw = fs.readFileSync(REPORTS_FILE, "utf8");
+        const raw = fs.readFileSync(filePath, "utf8");
         const arr = JSON.parse(raw);
         return Array.isArray(arr) ? arr : [];
     } catch (e) {
@@ -335,41 +369,170 @@ export function getReports() {
     }
 }
 
-export function addReport(report) {
-    ensureReportsFile();
-    try {
-        const arr = getReports();
-        arr.push(report);
-        fs.writeFileSync(REPORTS_FILE, JSON.stringify(arr, null, 2), "utf8");
-        return true;
-    } catch (e) {
-        return false;
+function writeAllReportsMap(map) {
+    ensureReportsDir();
+    const seen = new Set();
+    map.forEach((arr, key) => {
+        const file = reportFileForKey(key);
+        if (arr && arr.length) {
+            fs.writeFileSync(file, JSON.stringify(arr, null, 2), "utf8");
+            seen.add(file);
+        } else if (fs.existsSync(file)) {
+            try {
+                fs.unlinkSync(file);
+            } catch (e) {}
+        }
+    });
+
+    const existing = fs.readdirSync(REPORTS_DIR).filter((f) => f.endsWith(".json"));
+    existing.forEach((file) => {
+        const full = path.join(REPORTS_DIR, file);
+        if (!seen.has(full)) {
+            try {
+                const arr = readReportsFile(full);
+                if (!arr.length) fs.unlinkSync(full);
+            } catch (e) {}
+        }
+    });
+
+    if (fs.existsSync(LEGACY_REPORTS_FILE)) {
+        try {
+            fs.writeFileSync(LEGACY_REPORTS_FILE, JSON.stringify([], null, 2), "utf8");
+        } catch (e) {}
     }
+}
+
+function migrateLegacyReportsIfNeeded() {
+    if (legacyReportsMigrated) return;
+    legacyReportsMigrated = true;
+    if (!fs.existsSync(LEGACY_REPORTS_FILE)) return;
+    try {
+        const raw = fs.readFileSync(LEGACY_REPORTS_FILE, "utf8");
+        const arr = JSON.parse(raw);
+        if (!Array.isArray(arr) || !arr.length) {
+            return;
+        }
+        const map = new Map();
+        arr.forEach((report) => {
+            if (!report || typeof report !== "object") return;
+            const key = normalizeReportKey(report.subjectId);
+            if (!map.has(key)) map.set(key, []);
+            map.get(key).push(report);
+        });
+        writeAllReportsMap(map);
+        fs.writeFileSync(LEGACY_REPORTS_FILE, JSON.stringify([], null, 2), "utf8");
+    } catch (e) {
+        legacyReportsMigrated = false;
+    }
+}
+
+function readAllReportsMap() {
+    ensureReportsDir();
+    migrateLegacyReportsIfNeeded();
+    const map = new Map();
+    if (fs.existsSync(REPORTS_DIR)) {
+        const files = fs.readdirSync(REPORTS_DIR).filter((f) => f.endsWith(".json"));
+        files.forEach((file) => {
+            const full = path.join(REPORTS_DIR, file);
+            const list = readReportsFile(full);
+            if (!list.length) {
+                try {
+                    fs.unlinkSync(full);
+                } catch (e) {}
+                return;
+            }
+            list.forEach((report) => {
+                if (!report || typeof report !== "object") return;
+                const key = normalizeReportKey(report.subjectId);
+                if (!map.has(key)) map.set(key, []);
+                if (!report.subjectId && key !== DEFAULT_REPORT_SUBJECT_KEY) {
+                    report.subjectId = keyToSubjectId(key);
+                }
+                map.get(key).push(report);
+            });
+        });
+    }
+
+    if (fs.existsSync(LEGACY_REPORTS_FILE)) {
+        try {
+            const raw = fs.readFileSync(LEGACY_REPORTS_FILE, "utf8");
+            const legacy = JSON.parse(raw);
+            if (Array.isArray(legacy) && legacy.length) {
+                legacy.forEach((report) => {
+                    if (!report || typeof report !== "object") return;
+                    const key = normalizeReportKey(report.subjectId);
+                    if (!map.has(key)) map.set(key, []);
+                    map.get(key).push(report);
+                });
+            }
+        } catch (e) {}
+    }
+
+    return map;
+}
+
+function flattenReports(map) {
+    const all = [];
+    map.forEach((arr) => {
+        arr.forEach((report) => {
+            all.push(report);
+        });
+    });
+    return all;
+}
+
+export function getReports() {
+    return flattenReports(readAllReportsMap());
+}
+
+export function addReport(report) {
+    if (!report || !report.messageId) return false;
+    const map = readAllReportsMap();
+    let subjectId = report.subjectId;
+    if (!subjectId) {
+        const found = findMessageById(report.messageId);
+        if (found && found.post && found.post.subjectId) {
+            subjectId = found.post.subjectId;
+            report.subjectId = subjectId;
+        } else {
+            subjectId = "";
+        }
+    }
+    const key = normalizeReportKey(subjectId);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(report);
+    writeAllReportsMap(map);
+    return true;
 }
 
 export function hasReportForReply(messageId, replyId, email) {
     if (!messageId || !replyId || !email) return false;
-    const all = getReports();
+    const all = flattenReports(readAllReportsMap());
     return all.some((r) => r && !r.resolved && String(r.messageId) === String(messageId) && String(r.replyId) === String(replyId) && r.reporterEmail && String(r.reporterEmail).toLowerCase() === String(email).toLowerCase());
 }
 
 export function markReportsResolvedForReply(messageId, replyId, resolverEmail) {
-    ensureReportsFile();
-    try {
-        const arr = getReports();
-        let updated = 0;
+    const map = readAllReportsMap();
+    let updated = 0;
+    const now = new Date().toISOString();
+    map.forEach((arr, key) => {
+        let changed = false;
         const next = arr.map((r) => {
             if (r && !r.resolved && String(r.messageId) === String(messageId) && String(r.replyId) === String(replyId)) {
                 updated++;
-                return { ...r, resolved: true, resolvedBy: resolverEmail, resolvedAt: new Date().toISOString() };
+                changed = true;
+                return { ...r, resolved: true, resolvedBy: resolverEmail, resolvedAt: now };
             }
             return r;
         });
-        fs.writeFileSync(REPORTS_FILE, JSON.stringify(next, null, 2), "utf8");
-        return { updated };
-    } catch (e) {
-        return { updated: 0 };
+        if (changed) {
+            map.set(key, next);
+        }
+    });
+    if (updated > 0) {
+        writeAllReportsMap(map);
     }
+    return { updated };
 }
 
 // (Eliminado duplicado) addReport ya está declarado más arriba
@@ -379,7 +542,7 @@ export function markReportsResolvedForReply(messageId, replyId, resolverEmail) {
  */
 export function getReportsByReporter(email) {
     if (!email) return [];
-    const all = getReports();
+    const all = flattenReports(readAllReportsMap());
     try {
         return all.filter((r) => r && r.reporterEmail && String(r.reporterEmail).toLowerCase() === String(email).toLowerCase());
     } catch (e) {
@@ -392,8 +555,7 @@ export function getReportsByReporter(email) {
  */
 export function hasReport(messageId, email) {
     if (!messageId || !email) return false;
-    const all = getReports();
-    // Only consider active (not resolved) reports when determining if the user has already reported
+    const all = flattenReports(readAllReportsMap());
     return all.some((r) => r && !r.resolved && String(r.messageId) === String(messageId) && r.reporterEmail && String(r.reporterEmail).toLowerCase() === String(email).toLowerCase());
 }
 
@@ -402,17 +564,19 @@ export function hasReport(messageId, email) {
  */
 export function deleteReportById(reportId) {
     if (!reportId) return false;
-    ensureReportsFile();
-    try {
-        const arr = getReports();
-        const idx = arr.findIndex((r) => r && String(r.id) === String(reportId));
-        if (idx === -1) return false;
-        arr.splice(idx, 1);
-        fs.writeFileSync(REPORTS_FILE, JSON.stringify(arr, null, 2), "utf8");
-        return true;
-    } catch (e) {
-        return false;
+    const map = readAllReportsMap();
+    let removed = false;
+    map.forEach((arr, key) => {
+        const next = arr.filter((r) => !(r && String(r.id) === String(reportId)));
+        if (next.length !== arr.length) {
+            removed = true;
+            map.set(key, next);
+        }
+    });
+    if (removed) {
+        writeAllReportsMap(map);
     }
+    return removed;
 }
 
 /**
@@ -420,7 +584,7 @@ export function deleteReportById(reportId) {
  */
 export function getReportsByMessage(messageId) {
     if (!messageId) return [];
-    const all = getReports();
+    const all = flattenReports(readAllReportsMap());
     try {
         return all.filter((r) => r && String(r.messageId) === String(messageId) && !r.resolved);
     } catch (e) {
@@ -434,28 +598,30 @@ export function getReportsByMessage(messageId) {
  */
 export function markReportsResolvedForMessage(messageId, resolverEmail) {
     if (!messageId) return { updated: 0, reports: [] };
-    ensureReportsFile();
-    try {
-        const arr = getReports();
-        let updated = 0;
-        const now = new Date().toISOString();
-        const updatedReports = arr.map((r) => {
-            // Solo resolver reportes del mensaje principal (sin replyId)
+    const map = readAllReportsMap();
+    const now = new Date().toISOString();
+    let updated = 0;
+    const resolvedReports = [];
+    map.forEach((arr, key) => {
+        let changed = false;
+        const next = arr.map((r) => {
             if (r && String(r.messageId) === String(messageId) && !r.resolved && (r.replyId === undefined || r.replyId === null)) {
-                r.resolved = true;
-                r.resolvedBy = resolverEmail || null;
-                r.resolvedAt = now;
+                const resolved = { ...r, resolved: true, resolvedBy: resolverEmail || null, resolvedAt: now };
+                resolvedReports.push(resolved);
                 updated++;
+                changed = true;
+                return resolved;
             }
             return r;
         });
-        if (updated > 0) {
-            fs.writeFileSync(REPORTS_FILE, JSON.stringify(updatedReports, null, 2), "utf8");
+        if (changed) {
+            map.set(key, next);
         }
-        return { updated, reports: updatedReports.filter((r) => r && String(r.messageId) === String(messageId) && (r.replyId === undefined || r.replyId === null)) };
-    } catch (e) {
-        return { updated: 0, reports: [] };
+    });
+    if (updated > 0) {
+        writeAllReportsMap(map);
     }
+    return { updated, reports: resolvedReports };
 }
 
 /**
@@ -463,59 +629,123 @@ export function markReportsResolvedForMessage(messageId, resolverEmail) {
  */
 export function markReportResolved(reportId, resolverEmail) {
     if (!reportId) return null;
-    ensureReportsFile();
-    try {
-        const arr = getReports();
-        const idx = arr.findIndex((r) => r && String(r.id) === String(reportId));
-        if (idx === -1) return null;
-        const now = new Date().toISOString();
-        arr[idx].resolved = true;
-        arr[idx].resolvedBy = resolverEmail || null;
-        arr[idx].resolvedAt = now;
-        fs.writeFileSync(REPORTS_FILE, JSON.stringify(arr, null, 2), "utf8");
-        return arr[idx];
-    } catch (e) {
-        return null;
+    const map = readAllReportsMap();
+    const now = new Date().toISOString();
+    let resolved = null;
+    map.forEach((arr, key) => {
+        if (resolved) return;
+        let changed = false;
+        const next = arr.map((r) => {
+            if (!resolved && r && String(r.id) === String(reportId)) {
+                resolved = { ...r, resolved: true, resolvedBy: resolverEmail || null, resolvedAt: now };
+                changed = true;
+                return resolved;
+            }
+            return r;
+        });
+        if (changed) {
+            map.set(key, next);
+        }
+    });
+    if (resolved) {
+        writeAllReportsMap(map);
     }
+    return resolved;
 }
 
 // ===== Filtros de contenido (por asignatura) =====
-function ensureFiltersFile() {
-    const dir = path.dirname(FILTERS_FILE);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    if (!fs.existsSync(FILTERS_FILE)) fs.writeFileSync(FILTERS_FILE, JSON.stringify({}, null, 2), "utf8");
+function ensureFiltersDir() {
+    if (!fs.existsSync(FILTERS_DIR)) {
+        fs.mkdirSync(FILTERS_DIR, { recursive: true });
+    }
 }
 
-export function getFilters(subjectId) {
-    ensureFiltersFile();
+function filtersFileFor(subjectId) {
+    ensureFiltersDir();
+    let safe = String(subjectId || "")
+        .trim()
+        .replace(/[^a-zA-Z0-9._-]+/g, "-");
+    if (!safe) safe = "default";
+    return path.join(FILTERS_DIR, `${safe}.json`);
+}
+
+function readFiltersFromFile(filePath) {
     try {
-        const raw = fs.readFileSync(FILTERS_FILE, "utf8");
-        const map = JSON.parse(raw) || {};
-        const arr = map[subjectId] || map[String(subjectId)] || [];
+        const raw = fs.readFileSync(filePath, "utf8");
+        const arr = JSON.parse(raw);
         return Array.isArray(arr) ? arr : [];
     } catch (e) {
         return [];
     }
 }
 
+function readLegacyFilters(subjectId) {
+    if (!fs.existsSync(LEGACY_FILTERS_FILE)) return [];
+    try {
+        const raw = fs.readFileSync(LEGACY_FILTERS_FILE, "utf8");
+        const map = JSON.parse(raw) || {};
+        const key = String(subjectId);
+        const arr = map[key] || map[subjectId] || [];
+        if (!Array.isArray(arr) || arr.length === 0) return [];
+
+        const safeList = arr
+            .map((w) => String(w || "").trim())
+            .filter((w) => w.length > 0)
+            .slice(0, 200);
+
+        if (!safeList.length) return [];
+
+        // Migrar a fichero individual y eliminar del archivo legado
+        try {
+            const file = filtersFileFor(subjectId);
+            fs.writeFileSync(file, JSON.stringify(safeList, null, 2), "utf8");
+        } catch (err) {
+            // Si falla la escritura, simplemente devolvemos la lista para uso temporal
+        }
+
+        try {
+            delete map[key];
+            fs.writeFileSync(LEGACY_FILTERS_FILE, JSON.stringify(map, null, 2), "utf8");
+        } catch (err) {
+            // Ignorar fallos al depurar el archivo legado
+        }
+
+        return safeList;
+    } catch (e) {
+        return [];
+    }
+}
+
+export function getFilters(subjectId) {
+    const file = filtersFileFor(subjectId);
+    if (fs.existsSync(file)) {
+        return readFiltersFromFile(file);
+    }
+    return readLegacyFilters(subjectId);
+}
+
 export function setFilters(subjectId, filters) {
-    ensureFiltersFile();
+    ensureFiltersDir();
     const safeList = (Array.isArray(filters) ? filters : [])
         .map((w) => String(w || "").trim())
         .filter((w) => w.length > 0)
         .slice(0, 200);
-    try {
-        const raw = fs.readFileSync(FILTERS_FILE, "utf8");
-        const map = JSON.parse(raw) || {};
-        map[String(subjectId)] = safeList;
-        fs.writeFileSync(FILTERS_FILE, JSON.stringify(map, null, 2), "utf8");
-        return safeList;
-    } catch (e) {
-        const map = {};
-        map[String(subjectId)] = safeList;
-        fs.writeFileSync(FILTERS_FILE, JSON.stringify(map, null, 2), "utf8");
-        return safeList;
+    const file = filtersFileFor(subjectId);
+    fs.writeFileSync(file, JSON.stringify(safeList, null, 2), "utf8");
+    if (fs.existsSync(LEGACY_FILTERS_FILE)) {
+        try {
+            const raw = fs.readFileSync(LEGACY_FILTERS_FILE, "utf8");
+            const map = JSON.parse(raw) || {};
+            const key = String(subjectId);
+            if (map[key]) {
+                delete map[key];
+                fs.writeFileSync(LEGACY_FILTERS_FILE, JSON.stringify(map, null, 2), "utf8");
+            }
+        } catch (e) {
+            // noop: si no se puede actualizar el archivo legado no bloqueamos la funcionalidad principal
+        }
     }
+    return safeList;
 }
 
 export function textMatchesFilters(subjectId, ...texts) {

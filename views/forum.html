@@ -46,11 +46,11 @@
                 <div class="glass forum-header">
                     <div class="head-row">
                         {{#subject.icon}}
-                        <div class="subject-ico" style="background: {{subject.color}}">
+                        <div class="subject-ico" data-subject-color="{{subject.color}}">
                             <img src="{{subject.icon}}" alt="Icono {{subject.name}}" />
                         </div>
                         {{/subject.icon}} {{^subject.icon}}
-                        <div class="subject-ico initial" style="background: {{subject.color}}">{{subjectInitial}}</div>
+                        <div class="subject-ico initial" data-subject-color="{{subject.color}}">{{subjectInitial}}</div>
                         {{/subject.icon}}
                         <div style="flex: 1">
                             <h1 class="forum-title">Foro – {{subject.name}}</h1>
@@ -67,40 +67,117 @@
                     </div>
                 </div>
 
-                <!-- Mensajes del foro -->
-                <div class="mensage-forum card">
-                    <h2 class="section-title">Mensajes</h2>
-                    <div class="posts" id="postsContainer">
-                        <!-- Aquí se cargarán los mensajes dinámicamente -->
-                        <div class="hint h-center">
-                            <p style="margin: 0">Aún no hay mensajes en este foro.</p>
-                            <p style="margin: 8px 0 0; font-size: 13px">¡Sé el primero en publicar algo!</p>
+                <div class="forum-layout">
+                    <aside class="forum-layout__calendar">
+                        <!-- Calendario del foro -->
+                        <div class="glass calendar-card" id="calendarCard">
+                            <div class="calendar-header">
+                                <div>
+                                    <h2 class="section-title">Calendario del foro</h2>
+                                    <p class="calendar-subtitle">Consulta y comparte fechas clave de {{subject.name}}.</p>
+                                </div>
+                                <div class="calendar-controls">
+                                    <button type="button" class="calendar-nav" id="calendarPrev" aria-label="Mes anterior">‹</button>
+                                    <div class="calendar-month" id="calendarMonthLabel">Mes actual</div>
+                                    <button type="button" class="calendar-nav" id="calendarNext" aria-label="Mes siguiente">›</button>
+                                </div>
+                            </div>
+                            <div class="calendar-content">
+                                <div class="calendar-grid">
+                                    <div class="calendar-weekdays" aria-hidden="true">
+                                        <span>L</span>
+                                        <span>M</span>
+                                        <span>X</span>
+                                        <span>J</span>
+                                        <span>V</span>
+                                        <span>S</span>
+                                        <span>D</span>
+                                    </div>
+                                    <div class="calendar-days" id="calendarDays" role="grid" aria-label="Días del mes"></div>
+                                </div>
+                                <aside class="calendar-sidebar">
+                                    <section class="calendar-detail" id="calendarDetail" hidden>
+                                        <div class="calendar-selected">
+                                            <h3 id="calendarSelectedLabel">Selecciona un día</h3>
+                                        </div>
+                                        <ul class="calendar-events-list" id="calendarEventList">
+                                            <li class="calendar-empty">Selecciona un día para ver eventos.</li>
+                                        </ul>
+                                    </section>
+                                    <section class="calendar-add-wrapper" id="calendarAddWrapper" hidden>
+                                        <form id="calendarAddForm" class="calendar-add-form">
+                                            <h4>Nuevo evento</h4>
+                                            <div class="calendar-date-picker" aria-label="Selector de fecha">
+                                                <span class="calendar-date-title">Fecha</span>
+                                                <div class="calendar-date-fields" role="group" aria-label="Seleccionar día, mes y año">
+                                                    <label class="calendar-date-field" for="calendarEventDay">
+                                                        <span class="calendar-date-field-label">Día</span>
+                                                        <input type="number" id="calendarEventDay" min="1" max="31" placeholder="DD" inputmode="numeric" pattern="[0-9]*" title="Introduce un día válido" required />
+                                                    </label>
+                                                    <label class="calendar-date-field" for="calendarEventMonth">
+                                                        <span class="calendar-date-field-label">Mes</span>
+                                                        <select id="calendarEventMonth"></select>
+                                                    </label>
+                                                    <label class="calendar-date-field" for="calendarEventYear">
+                                                        <span class="calendar-date-field-label">Año</span>
+                                                        <input type="number" id="calendarEventYear" placeholder="AAAA" inputmode="numeric" pattern="[0-9]*" title="Introduce un año válido" max="2035" required />
+                                                    </label>
+                                                </div>
+                                                <input type="hidden" id="calendarEventDate" required />
+                                            </div>
+                                            <label>
+                                                Título
+                                                <input type="text" id="calendarEventTitle" maxlength="180" placeholder="Ej. Entrega de práctica" required />
+                                            </label>
+                                            <label>
+                                                Descripción
+                                                <textarea id="calendarEventDescription" rows="3" maxlength="600" placeholder="Detalles opcionales"></textarea>
+                                            </label>
+                                            <button class="btn" type="submit">Guardar evento</button>
+                                        </form>
+                                    </section>
+                                </aside>
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    </aside>
 
-                <!-- Formulario para nuevo mensaje -->
-                <div class="glass forum-header" style="margin-bottom: 0">
-                    <h2 class="section-title">Publicar mensaje</h2>
-                    <form id="newMessageForm">
-                        <div class="field">
-                            <label for="messageTitle">Título del mensaje</label>
-                            <input id="messageTitle" name="title" type="text" placeholder="Escribe un título para tu mensaje..." required />
+                    <section class="forum-layout__messages">
+                        <!-- Mensajes del foro -->
+                        <div class="mensage-forum card">
+                            <h2 class="section-title">Mensajes</h2>
+                            <div class="posts" id="postsContainer">
+                                <!-- Aquí se cargarán los mensajes dinámicamente -->
+                                <div class="hint h-center">
+                                    <p style="margin: 0">Aún no hay mensajes en este foro.</p>
+                                    <p style="margin: 8px 0 0; font-size: 13px">¡Sé el primero en publicar algo!</p>
+                                </div>
+                            </div>
                         </div>
-                        <div class="field" style="margin-top: 12px">
-                            <label for="messageContent">Contenido</label>
-                            <textarea id="messageContent" name="content" rows="5" placeholder="Comparte una duda, recurso o idea sobre la asignatura..." required></textarea>
+
+                        <!-- Formulario para nuevo mensaje -->
+                        <div class="glass forum-header forum-message-form">
+                            <h2 class="section-title">Publicar mensaje</h2>
+                            <form id="newMessageForm">
+                                <div class="field">
+                                    <label for="messageTitle">Título del mensaje</label>
+                                    <input id="messageTitle" name="title" type="text" placeholder="Escribe un título para tu mensaje..." required />
+                                </div>
+                                <div class="field" style="margin-top: 12px">
+                                    <label for="messageContent">Contenido</label>
+                                    <textarea id="messageContent" name="content" rows="5" placeholder="Comparte una duda, recurso o idea sobre la asignatura..." required></textarea>
+                                </div>
+                                <div class="field" style="margin-top: 12px">
+                                    <label for="messageAttachments">Adjuntos (imágenes o archivos)</label>
+                                    <input id="messageAttachments" name="attachments" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar" />
+                                    <small class="hint">Máx. 5 archivos, 5MB cada uno.</small>
+                                </div>
+                                <div class="actions left">
+                                    <button class="btn" type="submit">Publicar mensaje</button>
+                                    <button class="btn secondary" type="reset">Limpiar</button>
+                                </div>
+                            </form>
                         </div>
-                        <div class="field" style="margin-top: 12px">
-                            <label for="messageAttachments">Adjuntos (imágenes o archivos)</label>
-                            <input id="messageAttachments" name="attachments" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar" />
-                            <small class="hint">Máx. 5 archivos, 5MB cada uno.</small>
-                        </div>
-                        <div class="actions left">
-                            <button class="btn" type="submit">Publicar mensaje</button>
-                            <button class="btn secondary" type="reset">Limpiar</button>
-                        </div>
-                    </form>
+                    </section>
                 </div>
             </section>
         </main>
@@ -231,10 +308,10 @@
                 </div>
                 <div class="body">
                     <div class="ban-user-info">
-                        <div style="font-size: 13px; color: var(--muted); margin-bottom: 4px;">Usuario a banear:</div>
+                        <div style="font-size: 13px; color: var(--muted); margin-bottom: 4px">Usuario a banear:</div>
                         <div class="ban-user-email" id="banUserEmail">usuario@ejemplo.com</div>
                     </div>
-                    
+
                     <div class="ban-duration-options" id="banDurationOptions">
                         <div class="ban-option" data-hours="1">
                             <div>
@@ -243,7 +320,7 @@
                             </div>
                             <div class="ban-option-icon">⏰</div>
                         </div>
-                        
+
                         <div class="ban-option" data-hours="24">
                             <div>
                                 <div class="ban-option-label">24 horas</div>
@@ -251,7 +328,7 @@
                             </div>
                             <div class="ban-option-icon">📅</div>
                         </div>
-                        
+
                         <div class="ban-option" data-hours="168">
                             <div>
                                 <div class="ban-option-label">7 días</div>
@@ -259,7 +336,7 @@
                             </div>
                             <div class="ban-option-icon">📆</div>
                         </div>
-                        
+
                         <div class="ban-option" data-hours="720">
                             <div>
                                 <div class="ban-option-label">30 días</div>
@@ -267,7 +344,7 @@
                             </div>
                             <div class="ban-option-icon">🗓️</div>
                         </div>
-                        
+
                         <div class="ban-option" data-hours="0">
                             <div>
                                 <div class="ban-option-label">Permanente</div>
@@ -276,7 +353,7 @@
                             <div class="ban-option-icon">🚫</div>
                         </div>
                     </div>
-                    
+
                     <div class="modal-actions">
                         <button class="btn-cancel" id="cancelBan">Cancelar</button>
                     </div>
