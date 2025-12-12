@@ -29,6 +29,82 @@ export function getPosts(subjectId) {
     }
 }
 
+function safeTimestamp(value) {
+    if (!value) return null;
+    const ts = Date.parse(value);
+    return Number.isNaN(ts) ? null : ts;
+}
+
+function summarizeForum(posts = []) {
+    let total = 0;
+    let latestTs = null;
+    let latestPayload = null;
+
+    const consider = (payload) => {
+        total++;
+        const ts = safeTimestamp(payload?.timestamp);
+        if (ts === null) return;
+        if (latestTs === null || ts > latestTs) {
+            latestTs = ts;
+            latestPayload = payload;
+        }
+    };
+
+    posts.forEach((post) => {
+        if (!post || typeof post !== "object") return;
+        consider({
+            kind: "post",
+            id: post.id,
+            subjectId: post.subjectId,
+            title: post.title || "",
+            content: post.content || "",
+            timestamp: post.timestamp,
+            userName: post.userName || post.userEmail || "",
+        });
+        const replies = Array.isArray(post.replies) ? post.replies : [];
+        replies.forEach((reply) => {
+            if (!reply || typeof reply !== "object") return;
+            consider({
+                kind: "reply",
+                id: reply.id,
+                subjectId: post.subjectId,
+                content: reply.content || "",
+                timestamp: reply.timestamp,
+                userName: reply.userName || reply.userEmail || "",
+            });
+        });
+    });
+
+    const normalizePreview = (text = "") => {
+        const clean = String(text).replace(/\s+/g, " ").trim();
+        if (clean.length <= 140) return clean;
+        return clean.slice(0, 137) + "…";
+    };
+
+    return {
+        totalMessages: total,
+        lastMessageAt: latestTs !== null ? new Date(latestTs).toISOString() : null,
+        lastMessageKind: latestPayload?.kind || null,
+        lastMessageAuthor: latestPayload?.userName || null,
+        lastMessageTitle: latestPayload?.kind === "post" ? latestPayload?.title || "" : "",
+        lastMessagePreview: latestPayload?.kind === "post" ? normalizePreview(latestPayload?.content || latestPayload?.title || "") : normalizePreview(latestPayload?.content || ""),
+    };
+}
+
+export function getForumStats(subjectId) {
+    const posts = getPosts(subjectId);
+    return summarizeForum(posts);
+}
+
+export function getForumsStatsMap(subjectIds = []) {
+    const result = {};
+    subjectIds.forEach((id) => {
+        const key = String(id);
+        result[key] = getForumStats(id);
+    });
+    return result;
+}
+
 export function addPost(subjectId, post) {
     const file = fileFor(subjectId);
     const list = getPosts(subjectId);
@@ -245,6 +321,23 @@ export function removeReportsForMessage(messageId) {
     return removed;
 }
 
+export function removeReportsForReply(messageId, replyId) {
+    if (!messageId || !replyId) return 0;
+    const map = readAllReportsMap();
+    let removed = 0;
+    map.forEach((arr, key) => {
+        const next = arr.filter((r) => !(r && String(r.messageId) === String(messageId) && String(r.replyId) === String(replyId)));
+        if (next.length !== arr.length) {
+            removed += arr.length - next.length;
+            map.set(key, next);
+        }
+    });
+    if (removed > 0) {
+        writeAllReportsMap(map);
+    }
+    return removed;
+}
+
 /**
  * Añade una respuesta a un mensaje existente.
  * @param {string} messageId - ID del mensaje al que se responde
@@ -304,6 +397,13 @@ export function deleteReply(messageId, replyId) {
 
     // Guardar el archivo actualizado
     fs.writeFileSync(file, JSON.stringify(posts, null, 2), "utf8");
+
+    // Limpiar reportes asociados a esta respuesta si existen
+    try {
+        removeReportsForReply(messageId, replyId);
+    } catch (e) {
+        // noop en caso de fallo al limpiar reportes
+    }
 
     return deletedReply;
 }

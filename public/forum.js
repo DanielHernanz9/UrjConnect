@@ -36,6 +36,73 @@ const store = {
     },
 };
 
+function createUnreadTracker() {
+    const KEY_PREFIX = "urjconnect:reads:";
+    const sanitizeEmail = (email) =>
+        String(email || "")
+            .trim()
+            .toLowerCase();
+    const sanitizeSubject = (subjectId) => String(subjectId || "").trim();
+
+    const parseState = (raw) => {
+        if (!raw) return {};
+        try {
+            const parsed = JSON.parse(raw);
+            return parsed && typeof parsed === "object" ? parsed : {};
+        } catch (e) {
+            return {};
+        }
+    };
+
+    const readState = (email) => {
+        const keyEmail = sanitizeEmail(email);
+        if (!keyEmail) return {};
+        try {
+            const raw = localStorage.getItem(KEY_PREFIX + keyEmail);
+            return parseState(raw);
+        } catch (e) {
+            return {};
+        }
+    };
+
+    const writeState = (email, state) => {
+        const keyEmail = sanitizeEmail(email);
+        if (!keyEmail) return;
+        try {
+            localStorage.setItem(KEY_PREFIX + keyEmail, JSON.stringify(state || {}));
+        } catch (e) {}
+    };
+
+    const normalizeIso = (value) => {
+        const ts = Date.parse(value);
+        return Number.isNaN(ts) ? null : new Date(ts).toISOString();
+    };
+
+    return {
+        markRead(email, subjectId, stats = {}) {
+            const keySubject = sanitizeSubject(subjectId);
+            const keyEmail = sanitizeEmail(email);
+            if (!keySubject || !keyEmail) return;
+            const state = readState(keyEmail);
+            const total = Number(stats?.totalMessages ?? 0);
+            const normalizedTotal = Number.isFinite(total) ? Math.max(0, total) : 0;
+            const nowIso = new Date().toISOString();
+            const lastActivityIso = normalizeIso(stats?.lastMessageAt) || nowIso;
+            state[keySubject] = {
+                lastTotal: normalizedTotal,
+                lastSeenAt: lastActivityIso,
+                lastMarkedAt: nowIso,
+            };
+            writeState(keyEmail, state);
+        },
+    };
+}
+
+const unreadTracker = (typeof window !== "undefined" && window.__unreadTracker) || createUnreadTracker();
+if (typeof window !== "undefined") {
+    window.__unreadTracker = unreadTracker;
+}
+
 const toast = (msg) => {
     const t = $("#toast");
     t.textContent = msg;
@@ -655,6 +722,7 @@ const forumApp = {
             }
 
             this.renderMessages(messages);
+            this.syncUnreadWithMessages(messages);
 
             // Setup de permisos de profesor/admin después de cargar los datos
             this.setupProfessorPermissions();
@@ -1353,6 +1421,74 @@ const forumApp = {
         return new Date(year, monthIndex + 1, 0).getDate();
     },
 
+    computeLocalForumStats(messages = []) {
+        let total = 0;
+        let latestTs = null;
+        let latestPayload = null;
+
+        const consider = (payload) => {
+            total++;
+            const ts = payload?.timestamp ? Date.parse(payload.timestamp) : NaN;
+            if (Number.isNaN(ts)) return;
+            if (latestTs === null || ts > latestTs) {
+                latestTs = ts;
+                latestPayload = payload;
+            }
+        };
+
+        messages.forEach((msg) => {
+            if (!msg || typeof msg !== "object") return;
+            consider({
+                kind: "post",
+                id: msg.id,
+                subjectId: msg.subjectId,
+                title: msg.title || "",
+                content: msg.content || "",
+                timestamp: msg.timestamp,
+                userName: msg.userName || msg.userEmail || "",
+            });
+            const replies = Array.isArray(msg.replies) ? msg.replies : [];
+            replies.forEach((reply) => {
+                if (!reply || typeof reply !== "object") return;
+                consider({
+                    kind: "reply",
+                    id: reply.id,
+                    subjectId: msg.subjectId,
+                    content: reply.content || "",
+                    timestamp: reply.timestamp,
+                    userName: reply.userName || reply.userEmail || "",
+                });
+            });
+        });
+
+        const normalizePreview = (text = "") => {
+            const clean = String(text).replace(/\s+/g, " ").trim();
+            if (clean.length <= 140) return clean;
+            return clean.slice(0, 137) + "…";
+        };
+
+        return {
+            totalMessages: total,
+            lastMessageAt: latestTs !== null ? new Date(latestTs).toISOString() : null,
+            lastMessageKind: latestPayload?.kind || null,
+            lastMessageAuthor: latestPayload?.userName || "",
+            lastMessageTitle: latestPayload?.kind === "post" ? latestPayload?.title || "" : "",
+            lastMessagePreview: latestPayload?.kind === "post" ? normalizePreview(latestPayload?.content || latestPayload?.title || "") : normalizePreview(latestPayload?.content || ""),
+        };
+    },
+
+    syncUnreadWithMessages(messages = []) {
+        try {
+            const email = this.user?.email;
+            const subjectId = this.subject?.id;
+            if (!email || !subjectId) return;
+            const stats = this.computeLocalForumStats(messages);
+            unreadTracker.markRead(email, subjectId, stats);
+        } catch (e) {
+            // noop
+        }
+    },
+
     renderMessages(messages) {
         const container = this.el.postsContainer;
 
@@ -1443,6 +1579,7 @@ const forumApp = {
             if (!res.ok) return;
             const messages = await res.json();
             this.renderMessages(messages);
+            this.syncUnreadWithMessages(messages);
         } catch (err) {
             console.error("Error actualizando mensajes tras moderación:", err);
         }
@@ -1984,6 +2121,7 @@ const forumApp = {
                 const rPosts = await fetch(`/api/subjects/${this.subject.id}/posts`);
                 const messages = rPosts.ok ? await rPosts.json() : [];
                 this.renderMessages(messages);
+                this.syncUnreadWithMessages(messages);
                 form.reset();
                 toast("Mensaje publicado");
             } catch (err) {
@@ -2217,6 +2355,7 @@ const forumApp = {
                     const rPosts = await fetch(`/api/subjects/${this.subject.id}/posts`);
                     const messages = rPosts.ok ? await rPosts.json() : [];
                     this.renderMessages(messages);
+                    this.syncUnreadWithMessages(messages);
 
                     toast("Respuesta borrada");
                 } catch (err) {
@@ -2275,6 +2414,7 @@ const forumApp = {
                 const rPosts = await fetch(`/api/subjects/${this.subject.id}/posts`);
                 const messages = rPosts.ok ? await rPosts.json() : [];
                 this.renderMessages(messages);
+                this.syncUnreadWithMessages(messages);
 
                 this.closeModal("#replyModal");
                 this.el.replyForm.reset();
@@ -2460,7 +2600,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // Método para mostrar el modal de duración de baneo
     if (typeof forumApp !== "undefined") {
-        forumApp.showBanDurationModal = function (userEmail, messageId) {
+        forumApp.showBanDurationModal = function (userEmail, messageId, replyId) {
             const modal = document.getElementById("banDurationModal");
             const userEmailEl = document.getElementById("banUserEmail");
             const optionsContainer = document.getElementById("banDurationOptions");
@@ -2469,6 +2609,9 @@ window.addEventListener("DOMContentLoaded", () => {
 
             // Establecer email del usuario
             userEmailEl.textContent = userEmail;
+
+            const targetMessageId = messageId ? String(messageId) : null;
+            const targetReplyId = replyId ? String(replyId) : null;
 
             // Limpiar listeners anteriores
             const newOptionsContainer = optionsContainer.cloneNode(true);
@@ -2500,7 +2643,7 @@ window.addEventListener("DOMContentLoaded", () => {
                         const response = await fetch("/api/users/ban", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ email: userEmail, banDuration: banDuration }),
+                            body: JSON.stringify({ email: userEmail, banDuration: banDuration, messageId: targetMessageId, replyId: targetReplyId }),
                         });
 
                         if (!response.ok) {
@@ -2512,18 +2655,21 @@ window.addEventListener("DOMContentLoaded", () => {
                         let deleteFailed = false;
                         let deleteErrorMessage = null;
 
-                        if (replyId) {
-                            if (!messageId) {
+                        if (targetReplyId) {
+                            if (!targetMessageId) {
                                 deleteFailed = true;
                                 deleteErrorMessage = "no se pudo borrar la respuesta (ID de mensaje no disponible)";
                             } else {
                                 try {
-                                    const deleteResponse = await fetch(`/api/messages/${encodeURIComponent(messageId)}/reply/${encodeURIComponent(replyId)}`, { method: "DELETE" });
-                                    if (!deleteResponse.ok) {
+                                    const deleteResponse = await fetch(`/api/messages/${encodeURIComponent(targetMessageId)}/reply/${encodeURIComponent(targetReplyId)}`, { method: "DELETE" });
+                                    if (deleteResponse.status === 404) {
+                                        deletedContentType = "reply";
+                                    } else if (!deleteResponse.ok) {
                                         const deleteErr = await deleteResponse.json().catch(() => ({}));
                                         throw deleteErr || { message: "Error" };
+                                    } else {
+                                        deletedContentType = "reply";
                                     }
-                                    deletedContentType = "reply";
                                     await this.refreshPostsAfterModeration();
                                 } catch (deleteErr) {
                                     deleteFailed = true;
@@ -2531,16 +2677,19 @@ window.addEventListener("DOMContentLoaded", () => {
                                     console.error("Error borrando respuesta tras baneo:", deleteErr);
                                 }
                             }
-                        } else if (messageId) {
+                        } else if (targetMessageId) {
                             try {
-                                const deleteResponse = await fetch(`/api/messages/${encodeURIComponent(messageId)}`, { method: "DELETE" });
-                                if (!deleteResponse.ok) {
+                                const deleteResponse = await fetch(`/api/messages/${encodeURIComponent(targetMessageId)}`, { method: "DELETE" });
+                                if (deleteResponse.status === 404) {
+                                    deletedContentType = "message";
+                                } else if (!deleteResponse.ok) {
                                     const deleteErr = await deleteResponse.json().catch(() => ({}));
                                     throw deleteErr || { message: "Error" };
+                                } else {
+                                    deletedContentType = "message";
                                 }
-                                deletedContentType = "message";
                                 try {
-                                    const postEl = document.querySelector(`#msg-${CSS.escape(messageId)}`);
+                                    const postEl = document.querySelector(`#msg-${CSS.escape(targetMessageId)}`);
                                     if (postEl) postEl.remove();
                                 } catch (e) {}
                                 this.updateEmptyHint && this.updateEmptyHint();
@@ -2557,7 +2706,7 @@ window.addEventListener("DOMContentLoaded", () => {
                         } else if (deletedContentType === "reply") {
                             toast("Usuario baneado y respuesta borrada");
                         } else if (deleteFailed) {
-                            const fallback = deleteErrorMessage ? `Usuario baneado, pero ${deleteErrorMessage}` : replyId ? "Usuario baneado, pero no se pudo borrar la respuesta" : "Usuario baneado, pero no se pudo borrar el mensaje";
+                            const fallback = deleteErrorMessage ? `Usuario baneado, pero ${deleteErrorMessage}` : targetReplyId ? "Usuario baneado, pero no se pudo borrar la respuesta" : "Usuario baneado, pero no se pudo borrar el mensaje";
                             toast(fallback);
                         } else {
                             toast("Usuario baneado correctamente");

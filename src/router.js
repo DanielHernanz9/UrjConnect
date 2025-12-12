@@ -324,7 +324,21 @@ function getSubjectById(id) {
 
 // API: listar todas las asignaturas (cliente las consumirá)
 router.get("/api/subjects", (req, res) => {
-    res.json(subjects.getArray());
+    try {
+        const list = subjects.getArray();
+        const enriched = list.map((subject) => {
+            try {
+                const stats = forum.getForumStats ? forum.getForumStats(subject.id) : null;
+                return stats ? Object.assign({}, subject, { forumStats: stats }) : subject;
+            } catch (e) {
+                return subject;
+            }
+        });
+        res.json(enriched);
+    } catch (e) {
+        console.error("Error building subjects payload:", e);
+        res.json(subjects.getArray());
+    }
 });
 
 // API: obtener una asignatura por id
@@ -332,6 +346,16 @@ router.get("/api/subjects/:id", (req, res) => {
     const id = req.params.id;
     const alias = subjects.getAlias ? subjects.getAlias(id) : null;
     const s = getSubjectById(alias || id);
+    if (s && s.id) {
+        try {
+            const stats = forum.getForumStats ? forum.getForumStats(s.id) : null;
+            if (stats) {
+                return res.json(Object.assign({}, s, { forumStats: stats }));
+            }
+        } catch (e) {
+            // ignorar errores de estadísticas individuales, devolvemos objeto base
+        }
+    }
     res.json(s);
 });
 

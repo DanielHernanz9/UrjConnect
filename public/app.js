@@ -104,6 +104,123 @@ function getAvatarBg(user) {
     return hslToHex(h, 85, 60);
 }
 
+function createUnreadTracker() {
+    const KEY_PREFIX = "urjconnect:reads:";
+    const sanitizeEmail = (email) =>
+        String(email || "")
+            .trim()
+            .toLowerCase();
+    const sanitizeSubject = (subjectId) => String(subjectId || "").trim();
+
+    const parseState = (raw) => {
+        if (!raw) return {};
+        try {
+            const parsed = JSON.parse(raw);
+            return parsed && typeof parsed === "object" ? parsed : {};
+        } catch (e) {
+            return {};
+        }
+    };
+
+    const readState = (email) => {
+        const keyEmail = sanitizeEmail(email);
+        if (!keyEmail) return {};
+        try {
+            const raw = localStorage.getItem(KEY_PREFIX + keyEmail);
+            return parseState(raw);
+        } catch (e) {
+            return {};
+        }
+    };
+
+    const writeState = (email, state) => {
+        const keyEmail = sanitizeEmail(email);
+        if (!keyEmail) return;
+        try {
+            localStorage.setItem(KEY_PREFIX + keyEmail, JSON.stringify(state || {}));
+        } catch (e) {
+            // almacenamiento lleno o no disponible → ignorar
+        }
+    };
+
+    const normalizeIso = (value) => {
+        const ts = Date.parse(value);
+        return Number.isNaN(ts) ? null : new Date(ts).toISOString();
+    };
+
+    return {
+        get(email, subjectId) {
+            const state = readState(email);
+            return state[sanitizeSubject(subjectId)] || null;
+        },
+        markRead(email, subjectId, stats = {}) {
+            const keySubject = sanitizeSubject(subjectId);
+            const keyEmail = sanitizeEmail(email);
+            if (!keySubject || !keyEmail) return;
+            const state = readState(keyEmail);
+            const total = Number(stats?.totalMessages ?? 0);
+            const normalizedTotal = Number.isFinite(total) ? Math.max(0, total) : 0;
+            const nowIso = new Date().toISOString();
+            const lastActivityIso = normalizeIso(stats?.lastMessageAt) || nowIso;
+            state[keySubject] = {
+                lastTotal: normalizedTotal,
+                lastSeenAt: lastActivityIso,
+                lastMarkedAt: nowIso,
+            };
+            writeState(keyEmail, state);
+        },
+        computeUnread(email, subjectId, stats = {}) {
+            const keySubject = sanitizeSubject(subjectId);
+            const keyEmail = sanitizeEmail(email);
+            const totalRaw = Number(stats?.totalMessages ?? 0);
+            const total = Number.isFinite(totalRaw) ? Math.max(0, totalRaw) : 0;
+            const lastMessageAt = normalizeIso(stats?.lastMessageAt);
+            if (!keySubject || !keyEmail) {
+                return {
+                    count: 0,
+                    totalMessages: total,
+                    lastMessageAt,
+                    preview: stats?.lastMessagePreview || "",
+                    author: stats?.lastMessageAuthor || "",
+                    kind: stats?.lastMessageKind || null,
+                };
+            }
+            const state = readState(keyEmail);
+            const entry = state[keySubject];
+            let count = total;
+            if (entry) {
+                const lastTotal = Number(entry.lastTotal);
+                if (Number.isFinite(lastTotal)) {
+                    count = total - lastTotal;
+                }
+                if (count < 0) count = 0;
+                if (lastMessageAt) {
+                    const seen = entry.lastSeenAt ? Date.parse(entry.lastSeenAt) : null;
+                    const event = Date.parse(lastMessageAt);
+                    if (seen !== null && !Number.isNaN(seen) && !Number.isNaN(event) && event <= seen) {
+                        count = 0;
+                    }
+                }
+            }
+            if (!entry && total === 0) count = 0;
+            const cappedCount = count > 999 ? 999 : count;
+            return {
+                count: cappedCount,
+                totalMessages: total,
+                lastMessageAt,
+                preview: stats?.lastMessagePreview || "",
+                author: stats?.lastMessageAuthor || "",
+                kind: stats?.lastMessageKind || null,
+            };
+        },
+    };
+}
+
+const unreadTracker = (typeof window !== "undefined" && window.__unreadTracker) || createUnreadTracker();
+if (typeof window !== "undefined") {
+    window.__unreadTracker = unreadTracker;
+}
+
 const store = {
     getSession() {
         return JSON.parse(sessionStorage.getItem("session") || "null");
@@ -378,7 +495,8 @@ const app = {
         // Render favoritos solo si existe el grid (páginas como editPassword no lo tienen)
         this.renderFavDropdown();
         this.renderChips();
-        if (!this.el.cardsGrid) { // ← guard: no hay área de tarjetas en esta página
+        if (!this.el.cardsGrid) {
+            // ← guard: no hay área de tarjetas en esta página
             authUI.showApp();
             return;
         }
@@ -488,6 +606,39 @@ const app = {
                 e.stopPropagation();
                 window.location.href = `/subject/${encodeURIComponent(s.id)}/forum`;
             });
+
+            const stats = s.forumStats || null;
+            const unreadIndicator = $("[data-unread-indicator]", node);
+            const unreadCountEl = $("[data-unread-count]", node);
+            const email = this.user?.email || "";
+            const resetUnreadUI = () => {
+                node.classList.remove("card-has-unread");
+                if (unreadIndicator) {
+                    unreadIndicator.hidden = true;
+                    unreadIndicator.style.display = "none";
+                    unreadIndicator.removeAttribute("aria-label");
+                    unreadIndicator.removeAttribute("role");
+                }
+                if (unreadCountEl) unreadCountEl.textContent = "";
+            };
+
+            if (stats && email && unreadIndicator && unreadCountEl) {
+                const unreadInfo = unreadTracker.computeUnread(email, s.id, stats);
+                const hasUnread = unreadInfo.count > 0;
+                if (!hasUnread) {
+                    resetUnreadUI();
+                } else {
+                    node.classList.add("card-has-unread");
+                    const capped = unreadInfo.count > 99 ? "99+" : String(unreadInfo.count);
+                    unreadIndicator.hidden = false;
+                    unreadIndicator.style.display = "inline-flex";
+                    unreadIndicator.setAttribute("aria-label", `${capped} ${unreadInfo.count === 1 ? "mensaje sin leer" : "mensajes sin leer"}`);
+                    unreadIndicator.setAttribute("role", "status");
+                    unreadCountEl.textContent = capped;
+                }
+            } else {
+                resetUnreadUI();
+            }
             g.appendChild(node);
         });
     },
@@ -1060,23 +1211,34 @@ window.addEventListener("storage", (e) => {
             window.dispatchEvent(new CustomEvent("themechange", { detail: { theme: next } }));
         } catch (err) {}
     }
+    if (e.key && e.key.startsWith("urjconnect:reads:")) {
+        try {
+            const session = store.getSession();
+            const email = session?.email ? String(session.email).trim().toLowerCase() : "";
+            if (email && e.key.endsWith(email)) {
+                app.renderCards && app.renderCards();
+            }
+        } catch (err) {
+            // noop
+        }
+    }
 });
 
 // Formatear fecha de baneo en la página banned.html
-(function() {
-    const bannedUntilDateEl = document.getElementById('bannedUntilDate');
+(function () {
+    const bannedUntilDateEl = document.getElementById("bannedUntilDate");
     if (bannedUntilDateEl) {
         const bannedUntilISO = bannedUntilDateEl.dataset.bannedUntil;
         if (bannedUntilISO) {
             const date = new Date(bannedUntilISO);
-            const formatted = date.toLocaleString('es-ES', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
+            const formatted = date.toLocaleString("es-ES", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: false,
             });
             bannedUntilDateEl.textContent = formatted;
         }

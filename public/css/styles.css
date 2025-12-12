@@ -732,7 +732,7 @@ textarea {
 /* Card */
 .card {
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     padding: 16px;
     border-radius: 16px;
     border: 1px solid var(--border);
@@ -741,6 +741,40 @@ textarea {
     transform: translateY(0) scale(1);
     transition: transform 360ms cubic-bezier(0.18, 0.8, 0.2, 1), box-shadow 380ms cubic-bezier(0.18, 0.8, 0.2, 1), border-color 320ms ease;
     will-change: transform, box-shadow;
+}
+.card.card-has-unread {
+    border-color: var(--accent-2);
+    border-color: color-mix(in srgb, var(--accent-2) 65%, var(--border));
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
+}
+.card-unread-indicator {
+    position: absolute;
+    top: -14px;
+    right: -14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 5px 8px;
+    min-width: 30px;
+    border-radius: 999px;
+    background: var(--accent-2);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+    z-index: 2;
+    transform: none;
+    border: 2px solid var(--bg);
+    border: 2px solid color-mix(in srgb, var(--accent-2) 40%, var(--bg));
+    filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.3));
+}
+.card-unread-count {
+    display: inline-block;
+    text-align: center;
+    min-width: 1.4em;
 }
 .card:hover,
 .card:focus-visible {
@@ -764,6 +798,8 @@ textarea {
     filter: blur(60px);
     transform: translate3d(-40%, -40%, 0) rotate(8deg);
     pointer-events: none;
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 1) 58%, rgba(0, 0, 0, 0) 82%);
+    mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 1) 58%, rgba(0, 0, 0, 0) 82%);
 }
 [data-theme="dark"] .card .spark {
     filter: blur(90px);
