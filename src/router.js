@@ -8,6 +8,7 @@ import * as calendar from "./calendarService.js";
 import User from "./User.js";
 
 const router = express.Router();
+
 // Configuración de subida de iconos a /public/assets
 const uploadAssets = multer({
     storage: multer.diskStorage({
@@ -301,6 +302,32 @@ router.post("/logout", (req, res) => {
     res.send();
 });
 
+router.post("/changePassword", withAuth, (req, res) => {
+    const user = req.user;
+    const oldPassword = req.body.oldPassword;
+    const newPassword = req.body.newPassword;
+
+    // Validar longitud mínima
+    if (!newPassword || newPassword.length < 6) {
+        return res.json({
+            code: 5, // Contraseña demasiado corta
+            msg: "La nueva contraseña debe tener al menos 6 caracteres",
+        });
+    }
+
+    // Verificar contraseña actual
+    if (user.isPassword(oldPassword)) {
+        user.changePassword(newPassword);
+        return res.json({
+            code: 0,
+        });
+    }
+    return res.json({
+        code: 2,
+    });
+});
+
+
 function getSubjectById(id) {
     if (!id) return null;
     const key = String(id);
@@ -371,7 +398,58 @@ router.get("/api/subjects/:id/posts", withAuth, (req, res) => {
     res.json(posts);
 });
 
-// API: obtener reportes de una asignatura (admins globales o profesores de la asignatura)
+
+// API: Obtener lista de alumnos (Solo profesor/admin)
+router.get("/api/subjects/:id/students", withSubjectAdmin, (req, res) => {
+    const list = subjects.getSubjectStudents(req.params.id);
+    res.json(list);
+});
+
+// API: Añadir alumno (Solo profesor/admin)
+router.post("/api/subjects/:id/students", withSubjectAdmin, (req, res) => {
+    const email = req.body.email;
+    const result = subjects.addStudentToSubject(req.params.id, email);
+    res.json(result);
+});
+
+// API: Eliminar alumno (Solo profesor/admin)
+router.delete("/api/subjects/:id/students/:email", withSubjectAdmin, (req, res) => {
+    const result = subjects.removeStudentFromSubject(req.params.id, req.params.email);
+    res.json(result);
+});
+
+// API: Buscar usuarios para autocompletado (profesores o alumnos)
+router.get("/api/users/search", withAuth, (req, res) => {
+    const query = (req.query.q || "").toLowerCase().trim();
+    if (!query) return res.json([]);
+
+    try {
+        const usersDir = "data/users/";
+        if (!fs.existsSync(usersDir)) return res.json([]);
+
+        const files = fs.readdirSync(usersDir);
+        const matches = [];
+
+        // Leemos los ficheros de usuarios y filtramos (límite 5 para no saturar)
+        for (const file of files) {
+            if (matches.length >= 5) break; 
+            try {
+                const content = fs.readFileSync(usersDir + file, 'utf-8');
+                const u = JSON.parse(content);
+                // Buscamos por nombre o por email
+                if (u.email.toLowerCase().includes(query) || u.name.toLowerCase().includes(query)) {
+                    matches.push({ email: u.email, name: u.name });
+                }
+            } catch (e) { continue; }
+        }
+        res.json(matches);
+    } catch (e) {
+        console.error(e);
+        res.json([]);
+    }
+});
+
+
 router.get("/api/subjects/:id/reports", withSubjectAdmin, (req, res) => {
     try {
         const subjectId = req.params.id;
@@ -489,6 +567,7 @@ router.post("/subject/:id/forum/post", withAuth, uploadAttachments.array("attach
         // En caso de error evaluando filtros, seguimos creando para no bloquear uso
     }
 
+
     const post = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
         subjectId: subject.id,
@@ -512,15 +591,13 @@ router.post("/subject/:id/forum/post", withAuth, uploadAttachments.array("attach
     res.status(201).json(post);
 });
 
-export default router;
-
 router.post("/uploadIcon", withAdmin, uploadAssets.single("icon"), (req, res) => {
     if (!req.file) return res.status(400).json({ error: { code: "NO_FILE", message: "Falta archivo" } });
     const webPath = "/assets/" + req.file.filename;
     return res.json({ path: webPath });
 });
 
-// Filtros por asignatura (admin global o profesor de la asignatura)
+// Filtros por asignatura
 router.get("/api/subjects/:id/filters", withSubjectAdmin, (req, res) => {
     try {
         const id = req.params.id;
@@ -554,6 +631,7 @@ router.post("/api/subjects/:id/filters", withSubjectAdmin, (req, res) => {
     }
 });
 
+// Calendario
 router.get("/api/subjects/:id/calendar", withAuth, (req, res) => {
     try {
         const id = req.params.id;
@@ -646,6 +724,7 @@ router.post("/createSubject", withAdmin, (req, res) => {
     }
 });
 
+// Modificar y borrar asignatura
 router.post("/subject/:id/modify", withSubjectAdmin, (req, res) => {
     if (!req.body.subject) {
         return res.json({ code: 20 });
@@ -679,6 +758,7 @@ router.post("/subject/:id/delete", withSubjectAdmin, (req, res) => {
     return res.redirect("/");
 });
 
+
 router.post("/changePassword", withAuth, (req, res) => {
     const user = req.user;
     const oldPassword = req.body.oldPassword;
@@ -703,7 +783,9 @@ router.post("/changePassword", withAuth, (req, res) => {
         code: 2,
     });
 });
-// DELETE mensaje por id (autor o administradores)
+
+
+// DELETE mensaje
 router.delete("/api/messages/:id", withAuth, async (req, res) => {
     const messageId = req.params.id;
     try {
@@ -735,7 +817,7 @@ router.delete("/api/messages/:id", withAuth, async (req, res) => {
     }
 });
 
-// Reportar un mensaje (cualquier usuario autenticado)
+// Reportar mensaje
 router.post("/api/messages/:id/report", withAuth, (req, res) => {
     const messageId = req.params.id;
     const reason = String(req.body.reason || "")
@@ -770,7 +852,7 @@ router.post("/api/messages/:id/report", withAuth, (req, res) => {
     }
 });
 
-// Obtener reportes (solo administradores)
+// Obtener reportes (admin)
 router.get("/api/reports", withAdmin, (req, res) => {
     try {
         const reports = forum.getReports();
@@ -818,7 +900,7 @@ router.get("/api/reports", withAdmin, (req, res) => {
     }
 });
 
-// Obtener mis reportes (solo para el usuario autenticado) -> útil para UI
+// Obtener mis reportes
 router.get("/api/reports/my", withAuth, (req, res) => {
     try {
         const all = forum.getReports();
@@ -831,7 +913,7 @@ router.get("/api/reports/my", withAuth, (req, res) => {
     }
 });
 
-// Resolver un reporte (marcar como resuelto) - requiere admin
+// Resolver reporte
 router.post("/api/reports/:id/resolve", withAdmin, (req, res) => {
     const id = req.params.id;
     try {
@@ -845,7 +927,7 @@ router.post("/api/reports/:id/resolve", withAdmin, (req, res) => {
     }
 });
 
-// Eliminar un reporte (solo admin)
+// Eliminar reporte
 router.delete("/api/reports/:id", withAdmin, (req, res) => {
     const id = req.params.id;
     try {
@@ -859,17 +941,14 @@ router.delete("/api/reports/:id", withAdmin, (req, res) => {
     }
 });
 
-// Banear usuario por email (solo admin)
+// Banear usuario
 router.post("/api/users/ban", withAdmin, (req, res) => {
     try {
-        const email = String((req.body && req.body.email) || "")
-            .trim()
-            .toLowerCase();
+        const email = String((req.body && req.body.email) || "").trim().toLowerCase();
         if (!email) return res.status(400).json({ error: { code: "BAD_REQUEST", message: "Falta el email del usuario" } });
         const u = User.getFromFile(email);
         if (typeof u === "number") return res.status(404).json({ error: { code: "NOT_FOUND", message: "Usuario no encontrado" } });
 
-        // banDuration puede ser null (permanente) o un número en milisegundos
         const banDuration = req.body.banDuration ? parseInt(req.body.banDuration) : null;
         u.setBanned(true, banDuration);
 
@@ -880,19 +959,16 @@ router.post("/api/users/ban", withAdmin, (req, res) => {
     }
 });
 
-// Resolver todos los reportes de un mensaje (marcar como resueltos) - requiere admin
+// Resolver todos los reportes de un mensaje
 router.post("/api/reports/resolve-message/:messageId", withAuth, (req, res) => {
     const messageId = req.params.messageId;
     const user = req.user;
 
     try {
-        // Verificar si el usuario es admin o profesor de la asignatura
         const found = forum.findMessageById(messageId);
         if (!found || !found.post) {
             return res.status(404).json({ error: { code: "NOT_FOUND", message: "Mensaje no encontrado" } });
         }
-
-        // Extraer subjectId del archivo (data/forums/{subjectId}.json)
         const filePath = found.file;
         const fileMatch = filePath.match(/forums[\/\\]([^\/\\]+)\.json$/);
         const subjectId = fileMatch ? fileMatch[1] : null;
@@ -910,7 +986,7 @@ router.post("/api/reports/resolve-message/:messageId", withAuth, (req, res) => {
     }
 });
 
-// Publicar una respuesta a un mensaje
+// Publicar respuesta
 router.post("/api/messages/:messageId/reply", withAuth, uploadAttachments.array("attachments", 5), (req, res) => {
     const messageId = req.params.messageId;
     const { content, replyToUser, replyToId } = req.body || {};
@@ -924,7 +1000,6 @@ router.post("/api/messages/:messageId/reply", withAuth, uploadAttachments.array(
         return res.status(404).json({ error: { code: "NOT_FOUND", message: "Mensaje no encontrado" } });
     }
 
-    // Aplicar filtros de la asignatura al contenido de la respuesta
     try {
         const subjId = found.post.subjectId;
         if (forum.textMatchesFilters && forum.textMatchesFilters(subjId, String(content))) {
@@ -932,7 +1007,6 @@ router.post("/api/messages/:messageId/reply", withAuth, uploadAttachments.array(
         }
     } catch (e) {
         console.error("Error evaluando filtros en reply:", e);
-        // Si falla la evaluación de filtros, continuar para no bloquear
     }
 
     const reply = {
@@ -962,7 +1036,7 @@ router.post("/api/messages/:messageId/reply", withAuth, uploadAttachments.array(
     res.status(201).json(reply);
 });
 
-// Reportar una respuesta concreta de un mensaje
+// Reportar respuesta
 router.post("/api/messages/:messageId/reply/:replyId/report", withAuth, (req, res) => {
     const { messageId, replyId } = req.params;
     try {
@@ -974,13 +1048,10 @@ router.post("/api/messages/:messageId/reply/:replyId/report", withAuth, (req, re
         if (!reply) {
             return res.status(404).json({ error: { code: "NOT_FOUND", message: "Respuesta no encontrada" } });
         }
-
-        // Evitar duplicar reportes activos del mismo usuario
         const already = forum.hasReportForReply(messageId, replyId, req.user.email);
         if (already) {
             return res.status(409).json({ error: { code: "ALREADY_REPORTED", message: "Ya has reportado esta respuesta" } });
         }
-
         const report = {
             id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
             messageId: String(messageId),
@@ -1000,19 +1071,15 @@ router.post("/api/messages/:messageId/reply/:replyId/report", withAuth, (req, re
     }
 });
 
-// Resolver todos los reportes de una respuesta
+// Resolver reportes de respuesta
 router.post("/api/reports/resolve-reply/:messageId/:replyId", withAuth, (req, res) => {
     const { messageId, replyId } = req.params;
     const user = req.user;
-
     try {
-        // Verificar si el usuario es admin o profesor de la asignatura
         const found = forum.findMessageById(messageId);
         if (!found || !found.post) {
             return res.status(404).json({ error: { code: "NOT_FOUND", message: "Mensaje no encontrado" } });
         }
-
-        // Extraer subjectId del archivo (data/forums/{subjectId}.json)
         const filePath = found.file;
         const fileMatch = filePath.match(/forums[\/\\]([^\/\\]+)\.json$/);
         const subjectId = fileMatch ? fileMatch[1] : null;
@@ -1029,24 +1096,17 @@ router.post("/api/reports/resolve-reply/:messageId/:replyId", withAuth, (req, re
     }
 });
 
-// DELETE respuesta específica de un mensaje
+// DELETE respuesta
 router.delete("/api/messages/:messageId/reply/:replyId", withAuth, async (req, res) => {
     const { messageId, replyId } = req.params;
-
     try {
         const found = forum.findMessageById(messageId);
-        if (!found || !found.post) {
-            return res.status(404).json({ error: "Mensaje no encontrado" });
-        }
+        if (!found || !found.post) return res.status(404).json({ error: "Mensaje no encontrado" });
 
         const reply = forum.findReply(messageId, replyId);
-        if (!reply) {
-            return res.status(404).json({ error: "Respuesta no encontrada" });
-        }
+        if (!reply) return res.status(404).json({ error: "Respuesta no encontrada" });
 
         const user = req.user || null;
-
-        // Extraer subjectId del archivo (data/forums/{subjectId}.json)
         const filePath = found.file;
         const fileMatch = filePath.match(/forums[\/\\]([^\/\\]+)\.json$/);
         const subjectId = fileMatch ? fileMatch[1] : null;
@@ -1058,12 +1118,8 @@ router.delete("/api/messages/:messageId/reply/:replyId", withAuth, async (req, r
             return res.status(403).json({ error: "No tienes permisos para borrar esta respuesta" });
         }
 
-        // Borrado sin bloqueo por respuestas encadenadas: permitimos borrado de cualquier reply si es owner o admin.
-
         const deleted = forum.deleteReply(messageId, replyId);
-        if (!deleted) {
-            return res.status(500).json({ error: "Error al borrar la respuesta" });
-        }
+        if (!deleted) return res.status(500).json({ error: "Error al borrar la respuesta" });
 
         res.json({ success: true, deleted });
     } catch (err) {
@@ -1071,3 +1127,5 @@ router.delete("/api/messages/:messageId/reply/:replyId", withAuth, async (req, r
         res.status(500).json({ error: "Error del servidor" });
     }
 });
+
+export default router;

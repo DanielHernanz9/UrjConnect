@@ -6,7 +6,6 @@
         <title>URJConnect — Detalles de {{subject.name}}</title>
         <meta name="description" content="Detalles de la asignatura {{subject.name}}" />
         <link href="/css/styles.css" rel="stylesheet" />
-
         <link rel="icon" type="image/png" href="/assets/logo.png" />
     </head>
     <body>
@@ -66,8 +65,9 @@
                     <button class="enter" onclick="window.location.href='/subject/{{subject.id}}/forum'">
                         Entrar al foro
                     </button>
-                    <!-- NUEVO: botón para abrir editor de asignatura (solo visible a admins/profesores) -->
+                    <!-- NUEVO: botón para abrir editor de asignatura (solo visible a admins/profesores) -->                    
                     <button class="btn" id="editSubjectBtn" type="button" aria-haspopup="dialog" aria-controls="editSubjectModal" style="display: none;">Editar asignatura</button>
+                    <button class="btn secondary" id="manageStudentsBtn" type="button" style="display: none;">Alumnos</button>
                 </div>
             </section>
         </main>
@@ -168,6 +168,24 @@
             </div>
         </div>
 
+        <div class="modal" id="studentsModal" role="dialog" aria-modal="true">
+            <div class="content glass">
+                <div class="head" style="display:flex;justify-content:space-between;">
+                    <h3>Gestionar Alumnos</h3>
+                    <button class="close" data-close="#studentsModal">✕</button>
+                </div>
+                <div class="body">
+                    <div class="field" style="display:flex; gap:10px;">
+                        <input type="email" id="newStudentEmail" placeholder="Email del alumno" style="flex:1;">
+                        <button class="btn" id="btnAddStudent">Añadir</button>
+                    </div>
+                    <div style="margin-top:15px; max-height:300px; overflow-y:auto;">
+                        <ul id="studentsList" style="list-style:none; padding:0;"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
         <!-- Inyectar jsonUser (igual que en forum.html) -->
@@ -199,16 +217,22 @@
                             const isProfessor = Array.isArray(professors) 
                                 ? professors.includes(user.email)
                                 : professors === user.email;
-                            
+
                             console.log('isAdmin:', isAdmin, 'isProfessor:', isProfessor);
-                            
+
                             if (isAdmin || isProfessor) {
-                                // Mostrar botón de editar - remover display:none y forzar inline-block
+                                // Mostrar botón de editar
                                 const editBtn = document.getElementById('editSubjectBtn');
                                 if (editBtn) {
                                     editBtn.removeAttribute('style');
                                     editBtn.style.display = 'inline-block';
                                     console.log('Button shown');
+                                }
+                                // Mostrar botón de gestionar alumnos
+                                const manageBtn = document.getElementById('manageStudentsBtn');
+                                if (manageBtn) {
+                                    manageBtn.removeAttribute('style');
+                                    manageBtn.style.display = 'inline-block';
                                 }
                             }
                         })
@@ -244,14 +268,12 @@
                 if(modal) modal.style.display = 'none'; 
                 if(errorEl) errorEl.textContent = ''; 
             }
-
             async function loadSubject() {
                 try {
                     const r = await fetch(apiUrl);
                     if (!r.ok) throw new Error('Error cargando asignatura');
                     const s = await r.json();
                     
-                    // Rellenar campos
                     document.getElementById('es_id').value = s.id ?? subjectId;
                     document.getElementById('es_name').value = s.name ?? s.title ?? '';
                     document.getElementById('es_desc').value = s.desc ?? '';
@@ -259,7 +281,6 @@
                     document.getElementById('es_credits').value = s.credits ?? 0;
                     document.getElementById('es_prof').value = s.professor ?? s.prof ?? '';
                     document.getElementById('es_sched').value = s.schedule ?? s.sched ?? '';
-                    
                     try {
                         const color = s.color && s.color.startsWith('#') ? s.color : '#6366f1';
                         document.getElementById('es_color').value = color;
@@ -286,7 +307,6 @@
                 return j.path || j.url || j.location || null;
             }
 
-            // Event listeners
             if (editBtn) {
                 editBtn.addEventListener('click', async () => {
                     await loadSubject();
@@ -302,13 +322,11 @@
                 form.addEventListener('submit', async (e) => {
                     e.preventDefault();
                     if (errorEl) errorEl.textContent = '';
-                    
                     try {
                         let newIconPath = null;
                         if (iconFileInput && iconFileInput.files && iconFileInput.files.length > 0) {
                             newIconPath = await uploadIconIfNeeded();
                         }
-
                         const subjectData = {
                             id: subjectId,
                             name: document.getElementById('es_name').value.trim(),
@@ -319,21 +337,16 @@
                             schedule: document.getElementById('es_sched').value.trim(),
                             color: document.getElementById('es_color').value
                         };
-                        
-                        if (newIconPath) {
-                            subjectData.icon = newIconPath;
-                        } else if (currentIconPath) {
-                            subjectData.icon = currentIconPath;
-                        }
+                        if (newIconPath) subjectData.icon = newIconPath;
+                        else if (currentIconPath) subjectData.icon = currentIconPath;
 
                         const r = await fetch('/subject/' + encodeURIComponent(subjectId) + '/modify', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ subject: subjectData })
                         });
-
                         const data = await r.json().catch(() => null);
-                        if (r.ok && (!data || data.code === 0 || data.code === undefined)) {
+                                                if (r.ok && (!data || data.code === 0 || data.code === undefined)) {
                             window.location.reload();
                         } else {
                             if (errorEl) errorEl.textContent = (data && (data.message || data.error)) || ('Error al guardar (code=' + (data && data.code) + ')');
@@ -343,6 +356,67 @@
                     }
                 });
             }
+
+            // --- GESTIONAR ALUMNOS ---
+            const manageBtn = document.getElementById('manageStudentsBtn');
+            const studentsModal = document.getElementById('studentsModal');
+            const studentsList = document.getElementById('studentsList');
+            const btnAddStudent = document.getElementById('btnAddStudent');
+            const inputStudent = document.getElementById('newStudentEmail');
+
+            async function loadStudents() {
+                const r = await fetch(`/api/subjects/${subjectId}/students`);
+                const students = await r.json();
+                studentsList.innerHTML = '';
+                students.forEach(email => {
+                    const li = document.createElement('li');
+                    li.style.cssText = "display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid var(--border);";
+                    li.innerHTML = `
+                        <span>${email}</span>
+                        <button class="btn-delete-student" style="color:red; background:none; border:none; cursor:pointer;">✕</button>
+                    `;
+                    li.querySelector('button').onclick = () => removeStudent(email);
+                    studentsList.appendChild(li);
+                });
+            }
+
+            async function addStudent() {
+                const email = inputStudent.value.trim();
+                if(!email) return;
+                await fetch(`/api/subjects/${subjectId}/students`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email })
+                });
+                inputStudent.value = '';
+                loadStudents();
+            }
+
+            async function removeStudent(email) {
+                if(!confirm('¿Eliminar a ' + email + '?')) return;
+                await fetch(`/api/subjects/${subjectId}/students/${email}`, { method: 'DELETE' });
+                loadStudents();
+            }
+
+            if(manageBtn) {
+                manageBtn.addEventListener('click', () => {
+                    if(studentsModal) studentsModal.style.display = 'grid';
+                    loadStudents();
+                });
+            }
+            if(btnAddStudent) btnAddStudent.addEventListener('click', addStudent);
+
+            // Cierre de modales (genérico)
+            const allCloseBtns = document.querySelectorAll('[data-close]');
+            allCloseBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const selector = btn.getAttribute('data-close');
+                    const m = document.querySelector(selector);
+                    if(m) m.style.display = 'none';
+                    if(errorEl) errorEl.textContent = '';
+                });
+            });
+
         })();
         </script>
     </body>

@@ -7,14 +7,14 @@
 // Use this file to add JavaScript to your project
 
 /** =========================
- *  Datos base
- *  ========================= */
+ * Datos base
+ * ========================= */
 // removed static client SUBJECTS - will be loaded from server
 let SUBJECTS = [];
 
 /** =========================
- *  Helpers
- *  ========================= */
+ * Helpers
+ * ========================= */
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 const toast = (msg) => {
@@ -277,8 +277,8 @@ try {
 } catch (e) {}
 
 /** =========================
- *  Autenticación (localStorage)
- *  ========================= */
+ * Autenticación (localStorage)
+ * ========================= */
 const authUI = {
     authSection: $("#auth"),
     appSection: $("#app"),
@@ -428,8 +428,8 @@ if (authUI.registerForm)
     });
 
 /** =========================
- *  APP
- *  ========================= */
+ * APP
+ * ========================= */
 const app = {
     el: {
         profileBtn: $("#profileButton"),
@@ -869,6 +869,35 @@ const app = {
                 }
             });
         }
+
+        // AUTOCOMPLETADO DE PROFESORES
+        if (this.el.cs_prof) {
+            const profInput = this.el.cs_prof;
+            const dataList = document.getElementById("professor-list");
+
+            if (profInput && dataList) {
+                profInput.addEventListener("input", async (e) => {
+                    const val = e.target.value.trim();
+                    if (val.length < 1) return; // Buscar desde la primera letra
+
+                    try {
+                        const res = await fetch(`/api/users/search?q=${encodeURIComponent(val)}`);
+                        if (res.ok) {
+                            const users = await res.json();
+                            dataList.innerHTML = ""; // Limpiar
+                            users.forEach((u) => {
+                                const option = document.createElement("option");
+                                option.value = u.email;
+                                option.textContent = `${u.name} (${u.email})`;
+                                dataList.appendChild(option);
+                            });
+                        }
+                    } catch (err) {
+                        console.error("Error buscando usuarios", err);
+                    }
+                });
+            }
+        }
     },
 
     /* ---------- Swatches helpers ---------- */
@@ -1008,8 +1037,8 @@ const app = {
 };
 
 /** =========================
- *  Forum logic (cards desactivadas por ahora)
- *  ========================= */
+ * Forum logic (cards desactivadas por ahora)
+ * ========================= */
 const forum = {
     subject: null,
     open(s) {
@@ -1066,8 +1095,8 @@ function escapeHtml(str) {
 }
 
 /** =========================
- *  Modals
- *  ========================= */
+ * Modals
+ * ========================= */
 const modals = {
     open(sel) {
         const m = $(sel);
@@ -1090,8 +1119,8 @@ const sendPostBtn = $("#sendPost");
 if (sendPostBtn) sendPostBtn.addEventListener("click", () => forum.send());
 
 /** =========================
- *  Start
- *  ========================= */
+ * Start
+ * ========================= */
 app.wire();
 // Medir altura inicial del bloque de forms y garantizar centrado (solo si existe la sección de auth)
 if (authUI.authSection) {

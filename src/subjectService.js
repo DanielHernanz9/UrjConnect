@@ -344,18 +344,52 @@ export function modifySubjectById(oldId, incoming) {
 // Los profesores pueden ser un string o un array de emails
 export function isUserProfessor(subject, userEmail) {
     if (!subject || !userEmail) return false;
-    
+
     const professors = subject.professors || subject.professor;
-    
+
     // Si es un array, buscar el email
     if (Array.isArray(professors)) {
         return professors.includes(userEmail);
     }
-    
+
     // Si es un string, comparar directamente
     if (typeof professors === "string") {
         return professors === userEmail;
     }
-    
+
     return false;
+}
+
+// Añadir alumno a una asignatura
+export function addStudentToSubject(subjectId, studentEmail) {
+    const subject = SUBJECTS.get(subjectId);
+    if (!subject) return { error: "Asignatura no encontrada" };
+
+    // Inicializar array si no existe
+    if (!subject.students) subject.students = [];
+
+    // Evitar duplicados
+    if (subject.students.includes(studentEmail)) return { success: true }; // Ya estaba
+
+    subject.students.push(studentEmail);
+    saveSubject(subject);
+    return { success: true, students: subject.students };
+}
+
+// Eliminar alumno de una asignatura
+export function removeStudentFromSubject(subjectId, studentEmail) {
+    const subject = SUBJECTS.get(subjectId);
+    if (!subject) return { error: "Asignatura no encontrada" };
+
+    if (!subject.students) return { success: true };
+
+    subject.students = subject.students.filter((e) => e !== studentEmail);
+    saveSubject(subject);
+    return { success: true, students: subject.students };
+}
+
+// Obtener alumnos
+export function getSubjectStudents(subjectId) {
+    const subject = SUBJECTS.get(subjectId);
+    return subject ? subject.students || [] : [];
 }
