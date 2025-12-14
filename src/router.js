@@ -327,7 +327,6 @@ router.post("/changePassword", withAuth, (req, res) => {
     });
 });
 
-
 function getSubjectById(id) {
     if (!id) return null;
     const key = String(id);
@@ -374,11 +373,7 @@ router.get("/api/subjects", (req, res) => {
                 const isProfessor = subjects.isUserProfessor(subject, currentUser.email);
                 if (isProfessor) return true;
                 const studentsRaw = subject.students;
-                const students = Array.isArray(studentsRaw)
-                    ? studentsRaw
-                    : typeof studentsRaw === "string" && studentsRaw.trim().length
-                    ? [studentsRaw]
-                    : [];
+                const students = Array.isArray(studentsRaw) ? studentsRaw : typeof studentsRaw === "string" && studentsRaw.trim().length ? [studentsRaw] : [];
                 return students.some((email) => String(email || "").toLowerCase() === userEmail);
             });
         }
@@ -428,7 +423,6 @@ router.get("/api/subjects/:id/posts", withAuth, (req, res) => {
     res.json(posts);
 });
 
-
 // API: Obtener lista de alumnos (Solo profesor/admin)
 router.get("/api/subjects/:id/students", withSubjectAdmin, (req, res) => {
     const list = subjects.getSubjectStudents(req.params.id);
@@ -462,15 +456,17 @@ router.get("/api/users/search", withAuth, (req, res) => {
 
         // Leemos los ficheros de usuarios y filtramos (límite 5 para no saturar)
         for (const file of files) {
-            if (matches.length >= 5) break; 
+            if (matches.length >= 5) break;
             try {
-                const content = fs.readFileSync(usersDir + file, 'utf-8');
+                const content = fs.readFileSync(usersDir + file, "utf-8");
                 const u = JSON.parse(content);
                 // Buscamos por nombre o por email
                 if (u.email.toLowerCase().includes(query) || u.name.toLowerCase().includes(query)) {
                     matches.push({ email: u.email, name: u.name });
                 }
-            } catch (e) { continue; }
+            } catch (e) {
+                continue;
+            }
         }
         res.json(matches);
     } catch (e) {
@@ -478,7 +474,6 @@ router.get("/api/users/search", withAuth, (req, res) => {
         res.json([]);
     }
 });
-
 
 router.get("/api/subjects/:id/reports", withSubjectAdmin, (req, res) => {
     try {
@@ -596,7 +591,6 @@ router.post("/subject/:id/forum/post", withAuth, uploadAttachments.array("attach
         console.error("Error evaluando filtros en post:", e);
         // En caso de error evaluando filtros, seguimos creando para no bloquear uso
     }
-
 
     const post = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
@@ -788,7 +782,6 @@ router.post("/subject/:id/delete", withSubjectAdmin, (req, res) => {
     return res.redirect("/");
 });
 
-
 router.post("/changePassword", withAuth, (req, res) => {
     const user = req.user;
     const oldPassword = req.body.oldPassword;
@@ -813,7 +806,6 @@ router.post("/changePassword", withAuth, (req, res) => {
         code: 2,
     });
 });
-
 
 // DELETE mensaje
 router.delete("/api/messages/:id", withAuth, async (req, res) => {
@@ -974,7 +966,9 @@ router.delete("/api/reports/:id", withAdmin, (req, res) => {
 // Banear usuario
 router.post("/api/users/ban", withAdmin, (req, res) => {
     try {
-        const email = String((req.body && req.body.email) || "").trim().toLowerCase();
+        const email = String((req.body && req.body.email) || "")
+            .trim()
+            .toLowerCase();
         if (!email) return res.status(400).json({ error: { code: "BAD_REQUEST", message: "Falta el email del usuario" } });
         const u = User.getFromFile(email);
         if (typeof u === "number") return res.status(404).json({ error: { code: "NOT_FOUND", message: "Usuario no encontrado" } });

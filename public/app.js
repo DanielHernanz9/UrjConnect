@@ -49,7 +49,10 @@ const isSubjectAdmin = (user, subject) => {
     return false;
 };
 
-const normalizeEmail = (value) => String(value || "").trim().toLowerCase();
+const normalizeEmail = (value) =>
+    String(value || "")
+        .trim()
+        .toLowerCase();
 
 const subjectHasStudent = (subject, email) => {
     if (!subject || !email) return false;
