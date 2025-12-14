@@ -352,8 +352,38 @@ function getSubjectById(id) {
 // API: listar todas las asignaturas (cliente las consumirá)
 router.get("/api/subjects", (req, res) => {
     try {
-        const list = subjects.getArray();
-        const enriched = list.map((subject) => {
+        const allSubjects = subjects.getArray();
+
+        let currentUser = null;
+        if (req.cookies && req.cookies.session_id) {
+            currentUser = auth.authenticate(req.cookies.session_id) || null;
+            if (!currentUser) {
+                try {
+                    res.clearCookie("session_id", COOKIEOPTIONSDELETE);
+                } catch (e) {
+                    // noop: si no se puede limpiar la cookie continuamos igualmente
+                }
+            }
+        }
+
+        let visibleSubjects = allSubjects;
+        if (currentUser && !currentUser.isRole("admin")) {
+            const userEmail = String(currentUser.email || "").toLowerCase();
+            visibleSubjects = allSubjects.filter((subject) => {
+                if (!subject) return false;
+                const isProfessor = subjects.isUserProfessor(subject, currentUser.email);
+                if (isProfessor) return true;
+                const studentsRaw = subject.students;
+                const students = Array.isArray(studentsRaw)
+                    ? studentsRaw
+                    : typeof studentsRaw === "string" && studentsRaw.trim().length
+                    ? [studentsRaw]
+                    : [];
+                return students.some((email) => String(email || "").toLowerCase() === userEmail);
+            });
+        }
+
+        const enriched = visibleSubjects.map((subject) => {
             try {
                 const stats = forum.getForumStats ? forum.getForumStats(subject.id) : null;
                 return stats ? Object.assign({}, subject, { forumStats: stats }) : subject;

@@ -49,6 +49,29 @@ const isSubjectAdmin = (user, subject) => {
     return false;
 };
 
+const normalizeEmail = (value) => String(value || "").trim().toLowerCase();
+
+const subjectHasStudent = (subject, email) => {
+    if (!subject || !email) return false;
+    const normalizedTarget = normalizeEmail(email);
+    if (!normalizedTarget) return false;
+    const { students } = subject;
+    if (Array.isArray(students)) {
+        return students.some((entry) => normalizeEmail(entry) === normalizedTarget);
+    }
+    if (typeof students === "string") {
+        return normalizeEmail(students) === normalizedTarget;
+    }
+    return false;
+};
+
+const userCanAccessSubject = (user, subject) => {
+    if (!user || !subject) return false;
+    if (user.role === "admin") return true;
+    if (isSubjectAdmin(user, subject)) return true;
+    return subjectHasStudent(subject, user.email);
+};
+
 // 🎨 Presets de color para el avatar
 const PRESET_COLORS = ["#6366f1", "#06b6d4", "#22c55e", "#f59e0b", "#ec4899", "#8b5cf6", "#0ea5e9", "#14b8a6"];
 
@@ -528,7 +551,9 @@ const app = {
 
     renderFavDropdown() {
         // kept for compatibility but the UI no longer has a dropdown; this builds a simple list if needed elsewhere
-        return SUBJECTS.map((s) => ({ id: s.id, name: s.name, checked: this.isFav(s.id) }));
+        const session = this.user;
+        const pool = session ? SUBJECTS.filter((s) => userCanAccessSubject(session, s)) : SUBJECTS;
+        return pool.map((s) => ({ id: s.id, name: s.name, checked: this.isFav(s.id) }));
     },
 
     renderChips() {
@@ -537,9 +562,11 @@ const app = {
         chipsRow.innerHTML = "";
         const favs = store.getFavourites();
         if (!favs || favs.length === 0) return;
+        const session = this.user;
         favs.forEach((id) => {
             const subj = SUBJECTS.find((s) => s.id === id);
             if (!subj) return;
+            if (session && !userCanAccessSubject(session, subj)) return;
             const chip = document.createElement("button");
             chip.className = "chip starred";
             if (this.activeChipId === id) chip.classList.add("selected");
@@ -560,7 +587,11 @@ const app = {
         g.innerHTML = "";
         const q = (this.el.search?.value || "").toLowerCase().trim();
         const chipFilter = filterById !== undefined ? filterById : this.activeChipId;
-        let list = SUBJECTS.filter((s) => !chipFilter || s.id === chipFilter);
+        let list = SUBJECTS;
+        if (this.user) {
+            list = list.filter((s) => userCanAccessSubject(this.user, s));
+        }
+        list = list.filter((s) => !chipFilter || s.id === chipFilter);
         if (this.onlyFavs) list = list.filter((s) => this.isFav(s.id));
         if (q) list = list.filter((s) => s.name.toLowerCase().includes(q));
         list.sort((a, b) => {
