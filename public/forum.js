@@ -1566,11 +1566,15 @@ const forumApp = {
                     <button class="btn-reply" data-message-id="${msg.id}" data-reply-to="${this.escapeHtml(displayName)}" title="Responder">
                         Responder
                     </button>
-                    <button class="btn-report ${this.reportedSet && this.reportedSet.has(String(msg.id)) ? "reported" : ""}" data-message-id="${msg.id}" title="${
-                this.reportedSet && this.reportedSet.has(String(msg.id)) ? "Ya reportado" : "Reportar"
-            }">
-                        ${this.reportedSet && this.reportedSet.has(String(msg.id)) ? "Reportado" : "Reportar"}
-                    </button>
+                    ${
+                        !isMine
+                            ? `<button class="btn-report ${this.reportedSet && this.reportedSet.has(String(msg.id)) ? "reported" : ""}" data-message-id="${msg.id}" title="${
+                                  this.reportedSet && this.reportedSet.has(String(msg.id)) ? "Ya reportado" : "Reportar"
+                              }">
+                                    ${this.reportedSet && this.reportedSet.has(String(msg.id)) ? "Reportado" : "Reportar"}
+                                </button>`
+                            : ""
+                    }
                 </div>
                 ${this.renderReplies(msg.replies || [], msg.id)}
             `;
@@ -1878,11 +1882,15 @@ const forumApp = {
                             <button class="btn-reply-to-reply" data-parent-id="${parentId}" data-reply-to="${this.escapeHtml(displayName)}" data-reply-id="${reply.id}" data-thread-root="${reply.id}" title="Responder">
                                 Responder
                             </button>
-                            <button class="btn-report-reply ${this.reportedRepliesSet && this.reportedRepliesSet.has(`${parentId}:${reply.id}`) ? "reported" : ""}" data-parent-id="${parentId}" data-reply-id="${reply.id}" title="${
-                this.reportedRepliesSet && this.reportedRepliesSet.has(`${parentId}:${reply.id}`) ? "Ya reportado" : "Reportar respuesta"
-            }">
-                                ${this.reportedRepliesSet && this.reportedRepliesSet.has(`${parentId}:${reply.id}`) ? "Reportado" : "Reportar"}
-                            </button>
+                            ${
+                                !isMine
+                                    ? `<button class="btn-report-reply ${this.reportedRepliesSet && this.reportedRepliesSet.has(`${parentId}:${reply.id}`) ? "reported" : ""}" data-parent-id="${parentId}" data-reply-id="${reply.id}" title="${
+                                          this.reportedRepliesSet && this.reportedRepliesSet.has(`${parentId}:${reply.id}`) ? "Ya reportado" : "Reportar respuesta"
+                                      }">
+                                            ${this.reportedRepliesSet && this.reportedRepliesSet.has(`${parentId}:${reply.id}`) ? "Reportado" : "Reportar"}
+                                        </button>`
+                                    : ""
+                            }
             `;
 
             // Filtrar solo las respuestas que pertenecen a este hilo y no han sido renderizadas
@@ -1953,11 +1961,15 @@ const forumApp = {
                                 <button class="btn-reply-to-reply" data-parent-id="${parentId}" data-reply-to="${this.escapeHtml(subDisplayName)}" data-reply-id="${subReply.id}" data-thread-root="${reply.id}" title="Responder">
                                     Responder
                                 </button>
-                                <button class="btn-report-reply ${this.reportedRepliesSet && this.reportedRepliesSet.has(`${parentId}:${subReply.id}`) ? "reported" : ""}" data-parent-id="${parentId}" data-reply-id="${subReply.id}" title="${
-                        this.reportedRepliesSet && this.reportedRepliesSet.has(`${parentId}:${subReply.id}`) ? "Ya reportado" : "Reportar respuesta"
-                    }">
-                                    ${this.reportedRepliesSet && this.reportedRepliesSet.has(`${parentId}:${subReply.id}`) ? "Reportado" : "Reportar"}
-                                </button>
+                                ${
+                                    !subIsMine
+                                        ? `<button class="btn-report-reply ${this.reportedRepliesSet && this.reportedRepliesSet.has(`${parentId}:${subReply.id}`) ? "reported" : ""}" data-parent-id="${parentId}" data-reply-id="${
+                                              subReply.id
+                                          }" title="${this.reportedRepliesSet && this.reportedRepliesSet.has(`${parentId}:${subReply.id}`) ? "Ya reportado" : "Reportar respuesta"}">
+                                                ${this.reportedRepliesSet && this.reportedRepliesSet.has(`${parentId}:${subReply.id}`) ? "Reportado" : "Reportar"}
+                                            </button>`
+                                        : ""
+                                }
                             </div>
                         </div>
                     `;
@@ -2279,6 +2291,14 @@ const forumApp = {
                             // (el modal muestra el conteo)
                             return;
                         }
+                        let payload = null;
+                        try {
+                            payload = await res.json();
+                        } catch (err) {}
+                        if (res.status === 400 && payload?.error?.code === "SELF_REPORT") {
+                            toast("No puedes reportar tus propios mensajes");
+                            return;
+                        }
                         toast("Error reportando el mensaje");
                         return;
                     }
@@ -2323,6 +2343,14 @@ const forumApp = {
                             btnReportReply.classList.add("reported");
                             btnReportReply.textContent = "Reportado";
                             btnReportReply.setAttribute("title", "Ya reportado");
+                            return;
+                        }
+                        let payload = null;
+                        try {
+                            payload = await res.json();
+                        } catch (err) {}
+                        if (res.status === 400 && payload?.error?.code === "SELF_REPORT") {
+                            toast("No puedes reportar tus propias respuestas");
                             return;
                         }
                         toast("Error reportando la respuesta");

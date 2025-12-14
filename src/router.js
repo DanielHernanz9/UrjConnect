@@ -848,6 +848,12 @@ router.post("/api/messages/:id/report", withAuth, (req, res) => {
 
     const found = forum.findMessageById(messageId);
     if (!found || !found.post) return res.status(404).json({ error: { code: "NOT_FOUND", message: "Mensaje no encontrado" } });
+
+    const ownerEmail = found.post.userEmail ? String(found.post.userEmail).toLowerCase() : null;
+    const requesterEmail = req.user?.email ? String(req.user.email).toLowerCase() : null;
+    if (ownerEmail && requesterEmail && ownerEmail === requesterEmail) {
+        return res.status(400).json({ error: { code: "SELF_REPORT", message: "No puedes reportar tus propios mensajes" } });
+    }
     // Evitar reportes duplicados por el mismo usuario
     try {
         if (forum.hasReport && forum.hasReport(messageId, req.user.email)) {
@@ -1071,6 +1077,11 @@ router.post("/api/messages/:messageId/reply/:replyId/report", withAuth, (req, re
         const reply = forum.findReply(messageId, replyId);
         if (!reply) {
             return res.status(404).json({ error: { code: "NOT_FOUND", message: "Respuesta no encontrada" } });
+        }
+        const ownerEmail = reply.userEmail ? String(reply.userEmail).toLowerCase() : null;
+        const requesterEmail = req.user?.email ? String(req.user.email).toLowerCase() : null;
+        if (ownerEmail && requesterEmail && ownerEmail === requesterEmail) {
+            return res.status(400).json({ error: { code: "SELF_REPORT", message: "No puedes reportar tus propias respuestas" } });
         }
         const already = forum.hasReportForReply(messageId, replyId, req.user.email);
         if (already) {
