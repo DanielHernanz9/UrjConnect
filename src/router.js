@@ -686,7 +686,7 @@ router.post("/api/subjects/:id/calendar/events", withSubjectAdmin, (req, res) =>
         updated.subjectId = subject.id;
         return res.status(201).json({ event, calendar: updated });
     } catch (e) {
-        if (e && (e.code === "INVALID_DATE" || e.code === "TITLE_REQUIRED")) {
+        if (e && (e.code === "INVALID_DATE" || e.code === "TITLE_REQUIRED" || e.code === "DATE_IN_PAST")) {
             return res.status(400).json({ error: { code: e.code, message: e.message || "Datos inválidos" } });
         }
         console.error("Error añadiendo evento de calendario:", e);

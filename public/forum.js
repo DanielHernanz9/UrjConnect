@@ -815,12 +815,20 @@ const forumApp = {
         const isAdmin = !!this.isCalendarAdmin;
         if (this.el.calendarAddForm) {
             this.el.calendarAddForm.style.display = isAdmin ? "grid" : "none";
+            this.el.calendarAddForm.setAttribute("aria-hidden", String(!isAdmin));
+            const inputs = this.el.calendarAddForm.querySelectorAll("input, textarea, button, select");
+            inputs.forEach((el) => {
+                if (!el) return;
+                if (el.type === "hidden") return;
+                el.disabled = !isAdmin;
+            });
         }
         if (this.el.calendarAddWrapper) {
             this.el.calendarAddWrapper.hidden = !isAdmin;
         }
         if (this.el.calendarCard) {
             this.el.calendarCard.classList.toggle("calendar-card--admin", isAdmin);
+            this.el.calendarCard.classList.toggle("calendar-card--readonly", !isAdmin);
         }
         this.renderCalendarEvents();
     },
@@ -1314,8 +1322,16 @@ const forumApp = {
         const title = (this.el.calendarEventTitle?.value || "").trim();
         const description = (this.el.calendarEventDescription?.value || "").trim();
 
-        if (!this.parseISODate(date)) {
+        const parsedDate = this.parseISODate(date);
+        if (!parsedDate) {
             toast("Selecciona una fecha válida");
+            return;
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const eventDay = new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate());
+        if (eventDay < today) {
+            toast("No puedes crear eventos en fechas pasadas");
             return;
         }
         if (!title) {

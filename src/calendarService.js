@@ -158,6 +158,12 @@ export function addEvent(subjectId, payload) {
         err.code = "INVALID_DATE";
         throw err;
     }
+    const todayIso = new Date().toISOString().slice(0, 10);
+    if (date < todayIso) {
+        const err = new Error("No se pueden crear eventos en fechas pasadas");
+        err.code = "DATE_IN_PAST";
+        throw err;
+    }
     const title = String(payload?.title || "").trim();
     if (!title) {
         const err = new Error("El título es obligatorio");
