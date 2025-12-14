@@ -5,6 +5,48 @@ const SUBJECTS_DIR = "data/subjects/";
 const SUBJECTS = new Map();
 // Mapa de alias para redirecciones tras renombrar (oldId -> newId)
 const ALIASES = new Map();
+const SUBJECT_ARTIFACT_DIRS = [{ dir: path.join("data", "calendars"), allow: ["default"] }, { dir: path.join("data", "forums") }, { dir: path.join("data", "filters"), allow: ["default"] }, { dir: path.join("data", "reports"), allow: ["default"] }];
+
+function sanitizeArtifactId(value) {
+    return String(value || "")
+        .trim()
+        .replace(/[^a-zA-Z0-9._-]+/g, "-");
+}
+
+function cleanupSubjectArtifacts() {
+    const validIds = Array.from(SUBJECTS.keys())
+        .map((id) => String(id || "").trim())
+        .filter(Boolean);
+    const allowedBasenames = new Set();
+    validIds.forEach((id) => {
+        allowedBasenames.add(id);
+        const sanitized = sanitizeArtifactId(id);
+        if (sanitized) {
+            allowedBasenames.add(sanitized);
+        }
+    });
+
+    SUBJECT_ARTIFACT_DIRS.forEach(({ dir, allow = [] }) => {
+        if (!dir || !fs.existsSync(dir)) return;
+        const allowSet = new Set(allow || []);
+        try {
+            fs.readdirSync(dir)
+                .filter((f) => f.endsWith(".json"))
+                .forEach((file) => {
+                    const basename = file.slice(0, -5); // remove .json
+                    if (!allowedBasenames.has(basename) && !allowSet.has(basename)) {
+                        try {
+                            fs.rmSync(path.join(dir, file), { force: true });
+                        } catch (err) {
+                            console.error && console.error("cleanupSubjectArtifacts: error removing", file, err);
+                        }
+                    }
+                });
+        } catch (err) {
+            console.error && console.error("cleanupSubjectArtifacts: error scanning", dir, err);
+        }
+    });
+}
 
 function loadSubject(idOrFile) {
     const file = idOrFile.endsWith(".json") ? idOrFile : idOrFile + ".json";
@@ -50,6 +92,8 @@ function resetToDefaults(defaults) {
         SUBJECTS.set(s.id, s);
         saveSubject(s);
     }
+
+    cleanupSubjectArtifacts();
 }
 
 // Asegurar foros/asignaturas por defecto (idempotente)
@@ -270,6 +314,8 @@ export function deleteSubject(id) {
     SUBJECTS.delete(id);
     ALIASES.delete(id);
     removeSubjectFile(id);
+
+    cleanupSubjectArtifacts();
 }
 
 export function modifySubject(subject) {
@@ -330,6 +376,7 @@ export function modifySubjectById(oldId, incoming) {
         saveSubject(updated);
         removeSubjectFile(oldId);
         setAlias(oldId, desiredId);
+        cleanupSubjectArtifacts();
         return { code: 0, id: desiredId, newCode: updated.code };
     } else {
         // Sin cambio de id: solo actualizar
