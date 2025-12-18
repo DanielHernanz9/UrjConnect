@@ -245,6 +245,13 @@
 
         <script src="/app.js"></script>
         <script>
+            // Mostrar botón de editar asignatura si el usuario es profesor o admin
+            const editSubjectBtn = document.getElementById("editSubjectBtn");
+            if (editSubjectBtn && isSubjectAdmin(this.user, this.subject)) {
+                editSubjectBtn.style.display = "inline-block";
+            }
+        </script>
+        <script>
         (function(){
             // Elementos del DOM
             const editBtn = document.getElementById('editSubjectBtn');
