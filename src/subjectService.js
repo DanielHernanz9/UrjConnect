@@ -238,11 +238,9 @@ function slugify(str) {
     );
 }
 
-// Generar id a partir del nombre, únicamente en minúsculas (sin slug)
+// Generar id a partir del nombre, normalizando tildes y espacios
 export function idFromNameLower(name) {
-    return String(name || "")
-        .toLowerCase()
-        .trim();
+    return slugify(name);
 }
 
 export function generateId(name) {
@@ -348,8 +346,8 @@ export function modifySubjectById(oldId, incoming) {
     const nextName = updated.name ?? prev.name;
     const nameChanged = nextName !== prev.name;
 
-    // Usar el nombre en minúsculas y reemplazar espacios por '_' como id
-    let desiredId = (nextName || "").toLowerCase().trim().replace(/\s+/g, "_") || "asignatura";
+    // Generar id normalizado usando slugify
+    let desiredId = slugify(nextName) || "asignatura";
 
     // Si el id deseado ya existe y no es el actual, generar variante única manteniendo '_' y añadiendo sufijo _2, _3, ...
     if (desiredId !== oldId && SUBJECTS.has(desiredId)) {
@@ -393,15 +391,16 @@ export function isUserProfessor(subject, userEmail) {
     if (!subject || !userEmail) return false;
 
     const professors = subject.professors || subject.professor;
+    const normalizedUserEmail = String(userEmail).trim().toLowerCase();
 
-    // Si es un array, buscar el email
+    // Si es un array, buscar el email (normalizando ambos)
     if (Array.isArray(professors)) {
-        return professors.includes(userEmail);
+        return professors.some(email => String(email).trim().toLowerCase() === normalizedUserEmail);
     }
 
-    // Si es un string, comparar directamente
+    // Si es un string, comparar directamente (normalizando ambos)
     if (typeof professors === "string") {
-        return professors === userEmail;
+        return String(professors).trim().toLowerCase() === normalizedUserEmail;
     }
 
     return false;

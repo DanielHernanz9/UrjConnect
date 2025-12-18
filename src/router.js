@@ -157,12 +157,16 @@ function withSubjectAdmin(req, res, next) {
             }
 
             // Para no-admins, verificar si es profesor de la asignatura
-            const subjectId = req.params.id;
+            let subjectId = req.params.id;
             if (!subjectId) {
                 return res.status(403).json({
                     error: { code: "FORBIDDEN", message: "No tienes permisos para realizar esta acción." },
                 });
             }
+
+            // Resolver alias si existe
+            const alias = subjects.getAlias ? subjects.getAlias(subjectId) : null;
+            subjectId = alias || subjectId;
 
             const subject = subjects.getSubject(subjectId);
             if (!subject) {
@@ -177,6 +181,9 @@ function withSubjectAdmin(req, res, next) {
                     error: { code: "FORBIDDEN", message: "No tienes permisos para realizar esta acción." },
                 });
             }
+
+            // Actualizar req.params.id con el subjectId resuelto para que endpoints posteriores lo usen
+            req.params.id = subjectId;
 
             req.user = user;
             return next();
@@ -193,7 +200,11 @@ function isSubjectAdmin(user, subjectId) {
     if (!user || user.isRole("admin")) return true;
 
     // Para no-admins, verificar si es profesor de la asignatura
-    const subject = subjects.getSubject(subjectId);
+    // Resolver alias si existe
+    const alias = subjects.getAlias ? subjects.getAlias(subjectId) : null;
+    const resolvedId = alias || subjectId;
+    
+    const subject = subjects.getSubject(resolvedId);
     if (!subject) return false;
 
     return subjects.isUserProfessor(subject, user.email);
